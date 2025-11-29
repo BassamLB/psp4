@@ -1,0 +1,1345 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method App\\Actions\\TrackUserDevice\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/TrackUserDevice.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/AggregationMetrics.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PollingStation\:\:\$town\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/StressTestAggregation.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Events/BallotEntryCreated.php
+
+		-
+			message: '#^Method App\\Events\\BallotEntryCreated\:\:broadcastOn\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Events/BallotEntryCreated.php
+
+		-
+			message: '#^Method App\\Events\\BallotEntryCreated\:\:broadcastWith\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Events/BallotEntryCreated.php
+
+		-
+			message: '#^Method App\\Events\\StationResultsUpdated\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Events/StationResultsUpdated.php
+
+		-
+			message: '#^Method App\\Events\\StationResultsUpdated\:\:broadcastOn\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Events/StationResultsUpdated.php
+
+		-
+			message: '#^Method App\\Events\\StationResultsUpdated\:\:broadcastWith\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Events/StationResultsUpdated.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Town\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Town\>\:\:\$branch_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$branches\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$electoral_district_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\Town\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Town\>\:\:save\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\OrgGraphController\:\:attachTown\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\OrgGraphController\:\:delegateDistrictTowns\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\OrgGraphController\:\:detachTown\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\OrgGraphController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Town\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Town\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 2
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Unable to resolve the template type TMapValue in call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Town\>\:\:map\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>electoral_district_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Http/Controllers/Admin/OrgGraphController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\PollingStationController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/PollingStationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\PollingStationController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/PollingStationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\PollingStationController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/PollingStationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\PollingStationController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/PollingStationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\PollingStationController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/PollingStationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\PollingStationController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/PollingStationController.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Admin/ResultsController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\ResultsController\:\:data\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/ResultsController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\ResultsController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/ResultsController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PollingStation\:\:\$town\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\StationAssignmentController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\StationAssignmentController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\StationAssignmentController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\StationAssignmentController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\StationAssignmentController\:\:toggleStatus\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Relation ''pollingStation'' is not found in App\\Models\\StationUserAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Relation ''role'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Relation ''town'' is not found in App\\Models\\PollingStation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\StationUserAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/StationAssignmentController.php
+
+		-
+			message: '#^Relation ''role'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\UserInvitationController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/UserInvitationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\UserInvitationController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/UserInvitationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\UserInvitationController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Admin/UserInvitationController.php
+
+		-
+			message: '#^Relation ''role'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/UserInvitationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StationAggregate\:\:\$candidate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/StationResultsController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StationAggregate\:\:\$list\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/StationResultsController.php
+
+		-
+			message: '#^Relation ''candidate'' is not found in App\\Models\\StationAggregate model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Api/StationResultsController.php
+
+		-
+			message: '#^Relation ''list'' is not found in App\\Models\\StationAggregate model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Api/StationResultsController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PollingStation\:\:\$town\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StationAggregate\:\:\$candidate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StationAggregate\:\:\$list\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$full_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ElectoralList\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Relation ''candidate'' is not found in App\\Models\\StationAggregate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Relation ''list'' is not found in App\\Models\\StationAggregate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ElectoralList\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/BallotEntryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DashboardController\:\:adminDashboard\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DashboardController\:\:boxDashboard\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DashboardController\:\:userDashboard\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ElectionController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ElectionController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Middleware/HandleInertiaRequests.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Admin\\StoreUserRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Admin/StoreUserRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Admin\\StoreUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Admin/StoreUserRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Admin\\UpdateUserRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Admin/UpdateUserRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\Admin\\UpdateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/Admin/UpdateUserRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreBallotEntryRequest\:\:messages\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/StoreBallotEntryRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreBallotEntryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/StoreBallotEntryRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreExternalPollingStationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/StoreExternalPollingStationRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StationAggregate\:\:\$candidate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StationAggregate\:\:\$list\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:getCandidateCounts\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:getListCounts\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:getSummaryCounts\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:persistAggregates\(\) has parameter \$candidateCounts with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:persistAggregates\(\) has parameter \$listCounts with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:tags\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\AggregateStationResults\:\:updateStationSummary\(\) has parameter \$counts with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Property App\\Jobs\\AggregateStationResults\:\:\$backoff has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Property App\\Jobs\\AggregateStationResults\:\:\$maxExceptions has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Property App\\Jobs\\AggregateStationResults\:\:\$timeout has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Property App\\Jobs\\AggregateStationResults\:\:\$tries has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Relation ''candidate'' is not found in App\\Models\\StationAggregate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Relation ''list'' is not found in App\\Models\\StationAggregate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Jobs/AggregateStationResults.php
+
+		-
+			message: '#^Method App\\Jobs\\BroadcastStationUpdate\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/BroadcastStationUpdate.php
+
+		-
+			message: '#^Method App\\Jobs\\BroadcastStationUpdate\:\:normalizePayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/BroadcastStationUpdate.php
+
+		-
+			message: '#^Method App\\Jobs\\BroadcastStationUpdate\:\:tags\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/BroadcastStationUpdate.php
+
+		-
+			message: '#^Property App\\Jobs\\BroadcastStationUpdate\:\:\$data type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/BroadcastStationUpdate.php
+
+		-
+			message: '#^Method App\\Jobs\\ProcessBallotEntry\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/ProcessBallotEntry.php
+
+		-
+			message: '#^Method App\\Jobs\\ProcessBallotEntry\:\:tags\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Jobs/ProcessBallotEntry.php
+
+		-
+			message: '#^Property App\\Jobs\\ProcessBallotEntry\:\:\$backoff has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/ProcessBallotEntry.php
+
+		-
+			message: '#^Property App\\Jobs\\ProcessBallotEntry\:\:\$maxExceptions has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/ProcessBallotEntry.php
+
+		-
+			message: '#^Property App\\Jobs\\ProcessBallotEntry\:\:\$timeout has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/ProcessBallotEntry.php
+
+		-
+			message: '#^Property App\\Jobs\\ProcessBallotEntry\:\:\$tries has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/ProcessBallotEntry.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\TrackUserDevice\:\:handle\(\) expects App\\Models\\User, Illuminate\\Contracts\\Auth\\Authenticatable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Listeners/TrackUserDeviceOnLogin.php
+
+		-
+			message: '#^Method App\\Models\\Agency\:\:delegates\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Agency.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:candidate\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:enteredBy\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:list\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:pollingStation\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:scopeByStation\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:scopeByStation\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:scopeByStation\(\) has parameter \$stationId with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:scopeValidVotes\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntry\:\:scopeValidVotes\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/BallotEntry.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntryLog\:\:pollingStation\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/BallotEntryLog.php
+
+		-
+			message: '#^Method App\\Models\\BallotEntryLog\:\:user\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/BallotEntryLog.php
+
+		-
+			message: '#^Method App\\Models\\Branch\:\:delegate\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Branch.php
+
+		-
+			message: '#^Method App\\Models\\Branch\:\:towns\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Branch.php
+
+		-
+			message: '#^Method App\\Models\\Candidate\:\:ballotEntries\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Candidate.php
+
+		-
+			message: '#^Method App\\Models\\Candidate\:\:electoralList\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Candidate.php
+
+		-
+			message: '#^Method App\\Models\\Candidate\:\:sect\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Candidate.php
+
+		-
+			message: '#^Class App\\Models\\City uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/City.php
+
+		-
+			message: '#^Method App\\Models\\City\:\:country\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/City.php
+
+		-
+			message: '#^Class App\\Models\\Continent uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Continent.php
+
+		-
+			message: '#^Method App\\Models\\Continent\:\:countries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Continent.php
+
+		-
+			message: '#^Class App\\Models\\Country uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Country.php
+
+		-
+			message: '#^Method App\\Models\\Country\:\:cities\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Country.php
+
+		-
+			message: '#^Method App\\Models\\Country\:\:continent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Country.php
+
+		-
+			message: '#^Method App\\Models\\Delegate\:\:agency\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Delegate.php
+
+		-
+			message: '#^Method App\\Models\\Delegate\:\:branches\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Delegate.php
+
+		-
+			message: '#^Method App\\Models\\District\:\:electoralDistrict\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/District.php
+
+		-
+			message: '#^Method App\\Models\\District\:\:towns\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/District.php
+
+		-
+			message: '#^Method App\\Models\\ElectoralList\:\:ballotEntries\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ElectoralList.php
+
+		-
+			message: '#^Method App\\Models\\ElectoralList\:\:candidates\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ElectoralList.php
+
+		-
+			message: '#^Method App\\Models\\ElectoralList\:\:election\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ElectoralList.php
+
+		-
+			message: '#^Method App\\Models\\ElectoralList\:\:electoralDistrict\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ElectoralList.php
+
+		-
+			message: '#^Class App\\Models\\ExternalPollingStation uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ExternalPollingStation.php
+
+		-
+			message: '#^Method App\\Models\\ExternalPollingStation\:\:city\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ExternalPollingStation.php
+
+		-
+			message: '#^Method App\\Models\\ExternalPollingStation\:\:electoralDistricts\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany does not specify its types\: TRelatedModel, TDeclaringModel, TPivotModel, TAccessor \(2\-4 required\)$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/ExternalPollingStation.php
+
+		-
+			message: '#^Method App\\Models\\OfficialStationResult\:\:candidate\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/OfficialStationResult.php
+
+		-
+			message: '#^Method App\\Models\\OfficialStationResult\:\:list\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/OfficialStationResult.php
+
+		-
+			message: '#^Method App\\Models\\OfficialStationResult\:\:pollingStation\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/OfficialStationResult.php
+
+		-
+			message: '#^Method App\\Models\\PollingStation\:\:ballotEntries\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/PollingStation.php
+
+		-
+			message: '#^Method App\\Models\\PollingStation\:\:officialResults\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/PollingStation.php
+
+		-
+			message: '#^Method App\\Models\\PollingStation\:\:stationAggregates\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/PollingStation.php
+
+		-
+			message: '#^Method App\\Models\\PollingStation\:\:summary\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/PollingStation.php
+
+		-
+			message: '#^Method App\\Models\\PollingStation\:\:town\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/PollingStation.php
+
+		-
+			message: '#^Method App\\Models\\PollingStation\:\:userAssignments\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/PollingStation.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:users\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Method App\\Models\\StationAggregate\:\:candidate\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationAggregate.php
+
+		-
+			message: '#^Method App\\Models\\StationAggregate\:\:list\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationAggregate.php
+
+		-
+			message: '#^Method App\\Models\\StationAggregate\:\:pollingStation\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationAggregate.php
+
+		-
+			message: '#^Method App\\Models\\StationSummary\:\:pollingStation\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationSummary.php
+
+		-
+			message: '#^Method App\\Models\\StationSummary\:\:verifiedBy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationSummary.php
+
+		-
+			message: '#^Method App\\Models\\StationUserAssignment\:\:assignedBy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationUserAssignment.php
+
+		-
+			message: '#^Method App\\Models\\StationUserAssignment\:\:pollingStation\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationUserAssignment.php
+
+		-
+			message: '#^Method App\\Models\\StationUserAssignment\:\:user\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/StationUserAssignment.php
+
+		-
+			message: '#^Method App\\Models\\Town\:\:branch\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Town.php
+
+		-
+			message: '#^Method App\\Models\\Town\:\:district\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Town.php
+
+		-
+			message: '#^Method App\\Models\\Town\:\:pollingStations\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Town.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:ballotEntries\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:devices\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:role\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:stationAssignments\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^PHPDoc tag @method for method App\\Models\\User\:\:stationAssignments\(\) return type contains generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany but does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\UserDevice\:\:user\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/UserDevice.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: database/factories/UserFactory.php
+
+		-
+			message: '#^Method Database\\Seeders\\AgencyDelegateBranchSeeder\:\:logFailedRecord\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/AgencyDelegateBranchSeeder.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: database/seeders/AgencyDelegateBranchSeeder.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fgetcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: database/seeders/AgencyDelegateBranchSeeder.php
+
+		-
+			message: '#^Property Database\\Seeders\\AgencyDelegateBranchSeeder\:\:\$createdUsers type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/AgencyDelegateBranchSeeder.php
+
+		-
+			message: '#^Property Database\\Seeders\\AgencyDelegateBranchSeeder\:\:\$failedRecords type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/AgencyDelegateBranchSeeder.php
+
+		-
+			message: '#^Method Database\\Seeders\\ChoufElectoralListsSeeder\:\:getElectoralLists\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/ChoufElectoralListsSeeder.php
+
+		-
+			message: '#^Method Database\\Seeders\\PollingStationSeeder\:\:logFailedRecord\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/PollingStationSeeder.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: database/seeders/PollingStationSeeder.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fgetcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: database/seeders/PollingStationSeeder.php
+
+		-
+			message: '#^Property Database\\Seeders\\PollingStationSeeder\:\:\$duplicateTowns type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/PollingStationSeeder.php
+
+		-
+			message: '#^Property Database\\Seeders\\PollingStationSeeder\:\:\$failedRecords type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/PollingStationSeeder.php
+
+		-
+			message: '#^Method class@anonymous/tests/Feature/AggregateStationResultsTest\.php\:21\:\:block\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Feature/AggregateStationResultsTest.php
+
+		-
+			message: '#^Method class@anonymous/tests/Feature/AggregateStationResultsTest\.php\:21\:\:block\(\) has parameter \$seconds with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: tests/Feature/AggregateStationResultsTest.php
+
+		-
+			message: '#^Method class@anonymous/tests/Feature/AggregateStationResultsTest\.php\:21\:\:release\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Feature/AggregateStationResultsTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/AuthenticationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:assertAuthenticated\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/AuthenticationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:assertGuest\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Feature/Auth/AuthenticationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/AuthenticationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Auth/AuthenticationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Auth/EmailVerificationTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$polling_station_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Auth/LoginRedirectTest.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$role_id \(int\<0, max\>\|null\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: tests/Feature/Auth/LoginRedirectTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/PasswordConfirmationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/PasswordConfirmationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Auth/PasswordResetTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Feature/Auth/PasswordResetTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:assertAuthenticated\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/RegistrationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:assertGuest\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Feature/Auth/RegistrationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/RegistrationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Auth/RegistrationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Auth/TwoFactorChallengeTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:post\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Auth/TwoFactorChallengeTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Auth/VerificationNotificationTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/DashboardTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/DashboardTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ExampleTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Feature/Settings/PasswordUpdateTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Feature/Settings/ProfileUpdateTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:assertGuest\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Settings/ProfileUpdateTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Settings/TwoFactorAuthenticationTest.php
+
+		-
+			message: '#^Function something\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Pest.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: tests/Pest.php

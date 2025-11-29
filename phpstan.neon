@@ -1,0 +1,17 @@
+includes:
+  - vendor/larastan/larastan/extension.neon
+
+parameters:
+  level: 7
+  paths:
+    - app
+    - database
+    - routes
+    - tests
+  stubFiles:
+    - phpstan/stubs/phpunit_testcase.stub.php
+  inferPrivatePropertyTypeFromConstructor: true
+  ignoreErrors:
+    - message: '#Undefined variable: \$this#'
+      path: tests/Pest.php
+  # no excludePaths configured; vendor is skipped by default
