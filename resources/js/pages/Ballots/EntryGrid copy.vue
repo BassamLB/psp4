@@ -289,7 +289,7 @@ const submitBallot = async () => {
 
         // Show success message
         let message = ''
-        let ballotInfo: any = { type: ballotMode.value }
+        const ballotInfo: any = { type: ballotMode.value }
 
         if (ballotMode.value === 'white') {
             message = '✓ تم إدخال ورقة بيضاء'

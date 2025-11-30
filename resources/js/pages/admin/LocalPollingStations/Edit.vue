@@ -1,9 +1,27 @@
-<script setup>
+<script setup lang="ts">
 import { useForm, Head, Link } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
 
-const props = defineProps({ station: Object, towns: Array, elections: Array });
+interface Station {
+  id: number;
+  election_id?: number | null;
+  town_id?: number | null;
+  station_number?: number | null;
+  location?: string;
+  registered_voters?: number | null;
+  white_papers_count?: number | null;
+  cancelled_papers_count?: number | null;
+  voters_count?: number | null;
+  is_open?: boolean;
+  is_on_hold?: boolean;
+  is_closed?: boolean;
+  is_done?: boolean;
+  is_checked?: boolean;
+  is_final?: boolean;
+}
+
+const props = defineProps<{ station: Station; towns: Array<any>; elections: Array<any> }>();
 
 const form = useForm({
   election_id: props.station.election_id ?? (props.elections.length ? props.elections[0].id : null),

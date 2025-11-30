@@ -105,13 +105,19 @@
   </div>
  </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 
-const toasts = ref([]);
+type Toast = {
+  id: number;
+  message: string;
+  type: string;
+};
+
+const toasts = ref<Toast[]>([]);
 let nextId = 0;
 
-const addToast = (message, type = 'success', duration = 5000) => {
+const addToast = (message: string, type = 'success', duration = 5000) => {
   const id = nextId++;
   toasts.value.push({ id, message, type });
 
@@ -120,14 +126,14 @@ const addToast = (message, type = 'success', duration = 5000) => {
   }, duration);
 };
 
-const removeToast = (id) => {
+const removeToast = (id: number) => {
   const index = toasts.value.findIndex(toast => toast.id === id);
   if (index > -1) {
     toasts.value.splice(index, 1);
   }
 };
 
-const getBgColor = (type) => {
+const getBgColor = (type: string) => {
   switch (type) {
     case 'success':
       return 'bg-green-50 dark:bg-green-900';
@@ -140,7 +146,7 @@ const getBgColor = (type) => {
   }
 };
 
-const getTextColor = (type) => {
+const getTextColor = (type: string) => {
   switch (type) {
     case 'success':
       return 'text-green-800 dark:text-green-200';
@@ -153,7 +159,7 @@ const getTextColor = (type) => {
   }
 };
 
-const getCloseButtonColor = (type) => {
+const getCloseButtonColor = (type: string) => {
   switch (type) {
     case 'success':
       return 'text-green-500 hover:text-green-600 focus:ring-green-500';

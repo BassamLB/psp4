@@ -1,13 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { Link, router, Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
 import { InfiniteScroll } from '@inertiajs/vue3';
 
-const props = defineProps({ stations: Object, cities: Array, districts: Array });
+defineProps<{
+  stations: { data: Array<any>; [key: string]: any };
+  cities: Array<any>;
+  districts: Array<any>;
+}>();
 
-function confirmDelete(id) {
+function confirmDelete(id: number) {
   if (!confirm('Delete this polling station?')) return;
   router.delete(`/admin/polling-stations/${id}`);
 }
@@ -46,7 +49,7 @@ function confirmDelete(id) {
                   </div>
                   <div>
                     <span class="text-gray-500">Districts:</span>
-                    <span class="ml-2 text-gray-900">{{ station.electoral_districts?.map(d => d.name).join(', ') ?? '—' }}</span>
+                    <span class="ml-2 text-gray-900">{{ station.electoral_districts?.map((d: { name: string }) => d.name).join(', ') ?? '—' }}</span>
                   </div>
                 </div>
               </div>

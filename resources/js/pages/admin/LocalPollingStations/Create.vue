@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { useForm, Head, Link } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
 
-const props = defineProps({ towns: Array, elections: Array });
+const props = defineProps<{ towns: Array<any>; elections: Array<any> }>();
 
 const form = useForm({
   election_id: props.elections.length ? props.elections[0].id : null,

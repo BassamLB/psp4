@@ -240,8 +240,9 @@ const getRoleLabel = (role: string) => {
                                             : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300',
                                         !link.url && 'cursor-not-allowed opacity-50',
                                     ]"
-                                    v-html="link.label"
-                                />
+                                >
+                                    {{ link.label }}
+                                </Link>
                             </div>
                         </div>
                     </div>

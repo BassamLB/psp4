@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { Link, router, Head } from '@inertiajs/vue3';
 import { ref, onMounted, onUnmounted } from 'vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
 
-const props = defineProps({ stations: Object, towns: Array, elections: Array });
+const props = defineProps<{ stations: { data: Array<any>; [key: string]: any }; towns: Array<any>; elections: Array<any> }>();
 
 const allStations = ref([...props.stations.data]);
 console.log(allStations);

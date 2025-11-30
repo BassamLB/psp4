@@ -1,3 +1,187 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+
+import AdminLayout from '@/layouts/AdminLayout.vue';
+
+interface Child {
+  type: string;
+  id: number | string;
+  name?: string;
+  votes?: number;
+}
+const children = ref<Child[]>([]);
+const labels = ref([]);
+const data = ref([]);
+const colors = ref([]);
+const activeLevel = ref<string | null>(null);
+import type { Ref } from 'vue';
+const activeId: Ref<string | number | null> = ref(null);
+
+const chartCanvas = ref<HTMLCanvasElement | null>(null);
+let chart: any = null;
+
+const sciFiColors = ['#00f5ff', '#6ee7b7', '#7c3aed', '#ff6b6b', '#ffd166', '#06b6d4'];
+
+function isDarkMode() {
+  try {
+    return document.documentElement.classList.contains('dark');
+  } catch {
+    return false;
+  }
+}
+
+function normalizeHex(hex: string): string | null {
+  if (!hex) return null;
+  if (hex.startsWith('#')) hex = hex.slice(1);
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) return '#' + hex.toLowerCase();
+  return null;
+}
+
+function shadeHex(hex: string, percent: number): string {
+  // percent: -100..100
+  const h = normalizeHex(hex);
+  if (!h) return hex || '#0ea5a4';
+  const num = parseInt(h.slice(1), 16);
+  let r = (num >> 16) + Math.round(2.55 * percent);
+  let g = ((num >> 8) & 0x00FF) + Math.round(2.55 * percent);
+  let b = (num & 0x0000FF) + Math.round(2.55 * percent);
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  return '#' + ( (1 << 24) + (r << 16) + (g << 8) + b ).toString(16).slice(1);
+}
+
+function borderColorFor(hex: string): string {
+  const h = normalizeHex(hex);
+  if (!h) return '#071024';
+  return isDarkMode() ? shadeHex(h, -25) : shadeHex(h, -40);
+}
+
+function typeLabel(type: string): string {
+  switch (type) {
+    case 'electoral_district':
+      return 'الدائرة الانتخابية';
+    case 'district':
+      return 'المنطقة';
+    case 'town':
+      return 'البلدة';
+    case 'station':
+      return 'مركز الاقتراع';
+    case 'candidate':
+      return 'مرشح';
+    default:
+      return type.replace('_', ' ');
+  }
+}
+
+function displayLevel() {
+  if (!activeLevel.value) return 'جميع الدوائر الانتخابية';
+  return typeLabel(activeLevel.value);
+}
+
+async function fetchData() {
+  const params = new URLSearchParams();
+  if (activeLevel.value) params.append('level', activeLevel.value);
+  if (activeId.value) params.append('id', String(activeId.value));
+
+  const res = await fetch(`/admin/results/data?${params.toString()}`);
+  if (!res.ok) return;
+  const json = await res.json();
+  labels.value = json.labels || [];
+  data.value = json.data || [];
+  colors.value = json.colors || [];
+  children.value = json.children || [];
+  updateChart();
+}
+
+function selectTop() {
+  activeLevel.value = null;
+  activeId.value = null;
+  fetchData();
+}
+
+function drill(child: { type: string; id: number | string; name?: string; votes?: number }) {
+  if (child.type === 'electoral_district') {
+    activeLevel.value = 'electoral_district';
+    activeId.value = child.id;
+  } else if (child.type === 'district') {
+    activeLevel.value = 'district';
+    activeId.value = child.id;
+  } else if (child.type === 'town') {
+    activeLevel.value = 'town';
+    activeId.value = child.id;
+  } else if (child.type === 'station') {
+    activeLevel.value = 'station';
+    activeId.value = child.id;
+  } else if (child.type === 'candidate') {
+    return;
+  }
+  fetchData();
+}
+
+async function initChart() {
+  if (!chartCanvas.value) return;
+
+    try {
+    const ChartModule = await import('chart.js/auto');
+    const Chart = ChartModule.default || ChartModule;
+
+    const ctx = chartCanvas.value.getContext('2d');
+    if (!ctx) {
+      console.warn('Could not get 2D context for chart canvas.');
+      return;
+    }
+    chart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+          labels: labels.value,
+          datasets: [{
+            data: data.value,
+            backgroundColor: sciFiColors,
+            borderColor: '#071024',
+            borderWidth: 2,
+          }]
+        },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: isDarkMode() ? '#e6eef6' : '#0f172a', usePointStyle: true }
+          },
+          tooltip: {
+            titleColor: isDarkMode() ? '#e6eef6' : '#0f172a',
+            bodyColor: isDarkMode() ? '#071024' : '#0f172a',
+            backgroundColor: isDarkMode() ? '#c0f0ff' : '#fff',
+          }
+        }
+      }
+    });
+  } catch {
+    console.warn('Chart.js not found. Run `npm install chart.js` to enable charts.');
+  }
+}
+
+function updateChart() {
+  if (!chart) return;
+  chart.data.labels = labels.value;
+  chart.data.datasets[0].data = data.value;
+  // Use provided list colors if available, otherwise fall back to sciFiColors
+  const bg = (colors.value && colors.value.length) ? colors.value.map(c => normalizeHex(c) || '#0ea5a4') : sciFiColors;
+  chart.data.datasets[0].backgroundColor = bg;
+  // compute border colors from provided colors for contrast in dark/light mode
+  chart.data.datasets[0].borderColor = (colors.value && colors.value.length) ? colors.value.map(c => borderColorFor(c)) : ['#071024'];
+  chart.update();
+}
+
+onMounted(async () => {
+  await initChart();
+  await fetchData();
+});
+</script>
+
 <template>
   <AdminLayout>
     <div dir="rtl" class="p-6 min-h-[70vh] bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-slate-100 rounded-lg">
@@ -57,179 +241,6 @@
     </div>
   </AdminLayout>
 </template>
-
-<script setup>
-import { ref, onMounted } from 'vue';
-
-import AdminLayout from '@/layouts/AdminLayout.vue';
-
-const children = ref([]);
-const labels = ref([]);
-const data = ref([]);
-const colors = ref([]);
-const activeLevel = ref(null);
-const activeId = ref(null);
-
-const chartCanvas = ref(null);
-let chart = null;
-
-const sciFiColors = ['#00f5ff', '#6ee7b7', '#7c3aed', '#ff6b6b', '#ffd166', '#06b6d4'];
-
-function isDarkMode() {
-  try {
-    return document.documentElement.classList.contains('dark');
-  } catch (e) {
-    return false;
-  }
-}
-
-function normalizeHex(hex) {
-  if (!hex) return null;
-  if (hex.startsWith('#')) hex = hex.slice(1);
-  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
-  if (/^[0-9a-fA-F]{6}$/.test(hex)) return '#' + hex.toLowerCase();
-  return null;
-}
-
-function shadeHex(hex, percent) {
-  // percent: -100..100
-  const h = normalizeHex(hex);
-  if (!h) return hex || '#0ea5a4';
-  const num = parseInt(h.slice(1), 16);
-  let r = (num >> 16) + Math.round(2.55 * percent);
-  let g = ((num >> 8) & 0x00FF) + Math.round(2.55 * percent);
-  let b = (num & 0x0000FF) + Math.round(2.55 * percent);
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-  return '#' + ( (1 << 24) + (r << 16) + (g << 8) + b ).toString(16).slice(1);
-}
-
-function borderColorFor(hex) {
-  const h = normalizeHex(hex);
-  if (!h) return '#071024';
-  return isDarkMode() ? shadeHex(h, -25) : shadeHex(h, -40);
-}
-
-function typeLabel(type) {
-  switch (type) {
-    case 'electoral_district':
-      return 'الدائرة الانتخابية';
-    case 'district':
-      return 'المنطقة';
-    case 'town':
-      return 'البلدة';
-    case 'station':
-      return 'مركز الاقتراع';
-    case 'candidate':
-      return 'مرشح';
-    default:
-      return type.replace('_', ' ');
-  }
-}
-
-function displayLevel() {
-  if (!activeLevel.value) return 'جميع الدوائر الانتخابية';
-  return typeLabel(activeLevel.value);
-}
-
-async function fetchData() {
-  const params = new URLSearchParams();
-  if (activeLevel.value) params.append('level', activeLevel.value);
-  if (activeId.value) params.append('id', activeId.value);
-
-  const res = await fetch(`/admin/results/data?${params.toString()}`);
-  if (!res.ok) return;
-  const json = await res.json();
-  labels.value = json.labels || [];
-  data.value = json.data || [];
-  colors.value = json.colors || [];
-  children.value = json.children || [];
-  updateChart();
-}
-
-function selectTop() {
-  activeLevel.value = null;
-  activeId.value = null;
-  fetchData();
-}
-
-function drill(child) {
-  if (child.type === 'electoral_district') {
-    activeLevel.value = 'electoral_district';
-    activeId.value = child.id;
-  } else if (child.type === 'district') {
-    activeLevel.value = 'district';
-    activeId.value = child.id;
-  } else if (child.type === 'town') {
-    activeLevel.value = 'town';
-    activeId.value = child.id;
-  } else if (child.type === 'station') {
-    activeLevel.value = 'station';
-    activeId.value = child.id;
-  } else if (child.type === 'candidate') {
-    return;
-  }
-  fetchData();
-}
-
-async function initChart() {
-  if (!chartCanvas.value) return;
-
-    try {
-    const ChartModule = await import('chart.js/auto');
-    const Chart = ChartModule.default || ChartModule;
-
-    const ctx = chartCanvas.value.getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-          labels: labels.value,
-          datasets: [{
-            data: data.value,
-            backgroundColor: sciFiColors,
-            borderColor: '#071024',
-            borderWidth: 2,
-          }]
-        },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { color: isDarkMode() ? '#e6eef6' : '#0f172a', usePointStyle: true }
-          },
-          tooltip: {
-            titleColor: isDarkMode() ? '#e6eef6' : '#0f172a',
-            bodyColor: isDarkMode() ? '#071024' : '#0f172a',
-            backgroundColor: isDarkMode() ? '#c0f0ff' : '#fff',
-          }
-        }
-      }
-    });
-  } catch (e) {
-    console.warn('Chart.js not found. Run `npm install chart.js` to enable charts.');
-  }
-}
-
-function updateChart() {
-  if (!chart) return;
-  chart.data.labels = labels.value;
-  chart.data.datasets[0].data = data.value;
-  // Use provided list colors if available, otherwise fall back to sciFiColors
-  const bg = (colors.value && colors.value.length) ? colors.value.map(c => normalizeHex(c) || '#0ea5a4') : sciFiColors;
-  chart.data.datasets[0].backgroundColor = bg;
-  // compute border colors from provided colors for contrast in dark/light mode
-  chart.data.datasets[0].borderColor = (colors.value && colors.value.length) ? colors.value.map(c => borderColorFor(c)) : ['#071024'];
-  chart.update();
-}
-
-onMounted(async () => {
-  await initChart();
-  await fetchData();
-});
-</script>
 
 <style scoped>
 .list-enter-active, .list-leave-active {

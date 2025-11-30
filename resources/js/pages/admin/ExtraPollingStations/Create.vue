@@ -1,10 +1,22 @@
-<script setup>
+<script setup lang="ts">
 import { useForm, Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { Button } from '@/components/ui/button';
 
-const props = defineProps({ cities: Array, districts: Array });
+interface City {
+  id: number | string;
+  name: string;
+}
+
+interface District {
+  id: number | string;
+  name: string;
+}
+
+const props = defineProps<{
+  cities: City[];
+  districts: District[];
+}>();
 
 const form = useForm({
   number: '',

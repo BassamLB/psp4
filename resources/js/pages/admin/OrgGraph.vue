@@ -1,116 +1,24 @@
-<template>
-  <AdminLayout>
-    <div class="p-6 bg-white dark:bg-slate-900 min-h-screen">
-    <h1 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Organization Graph</h1>
-
-    <div class="flex gap-6">
-      <!-- Sidebar -->
-      <aside class="w-80 bg-white dark:bg-slate-800 rounded-lg p-4 shadow border border-gray-200 dark:border-slate-700">
-        <!-- Agency Filter -->
-        <div class="mb-6">
-          <div class="mb-3 font-medium text-gray-900 dark:text-gray-100">Select Agency</div>
-          <div class="space-y-2 overflow-auto max-h-48">
-            <button
-              class="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-900 dark:text-gray-100"
-              :class="{ 'bg-gray-100 dark:bg-slate-700': selectedAgencyId === null }"
-              @click="selectAgency(null)">
-              Show All Agencies
-            </button>
-            <template v-for="agency in graphData" :key="agency.id">
-              <button
-                class="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-900 dark:text-gray-100"
-                :class="{ 'bg-blue-100 dark:bg-blue-900/50 font-semibold': selectedAgencyId === agency.id }"
-                @click="selectAgency(agency.id)">
-                {{ agency.name }}
-              </button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Districts Legend -->
-        <div class="mb-6">
-          <div class="mb-3 font-medium text-gray-900 dark:text-gray-100">Districts</div>
-          <div class="space-y-1 max-h-32 overflow-auto">
-            <template v-for="d in districtsList" :key="d.id">
-              <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <span :style="{ background: getDistrictColor(d.id) }" class="w-4 h-4 rounded-sm border border-gray-300 dark:border-gray-600"></span>
-                <span class="truncate">{{ d.name }}</span>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- Selected Branch -->
-        <div v-if="selectedBranch" class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-          <div class="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Selected Branch:</div>
-          <div class="text-sm font-semibold text-blue-900 dark:text-blue-300">{{ selectedBranch.name }}</div>
-          <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
-            👉 Click a town below to link it to this branch
-          </div>
-          <button 
-            @click="selectedBranch = null" 
-            class="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline">
-            Clear Selection
-          </button>
-        </div>
-
-        <!-- Instructions -->
-        <div v-else class="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600">
-          <div class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">How to Link Towns:</div>
-          <ol class="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
-            <li>Click on a <strong>branch</strong> in the top graph</li>
-            <li>Expand a <strong>district</strong> in the bottom graph</li>
-            <li>Click on a <strong>town</strong> to link it</li>
-          </ol>
-        </div>
-      </aside>
-
-      <!-- Main Content -->
-      <div class="flex-1 space-y-4">
-        <!-- Organization Graph -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Organization Structure</h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Click agencies to expand, click branches to select</p>
-          </div>
-          <div id="org-network" class="bg-white dark:bg-slate-900" style="height: 35vh;"></div>
-        </div>
-
-        <!-- Districts & Towns Graph -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Districts & Towns</h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <span v-if="selectedBranch" class="text-blue-600 dark:text-blue-400 font-medium">Click a town to link to {{ selectedBranch.name }}</span>
-              <span v-else>Select a branch above first, then click a town to link</span>
-            </p>
-          </div>
-          <div id="towns-network" class="bg-white dark:bg-slate-900" style="height: 35vh;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  </AdminLayout>
-</template>
-
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import axios from 'axios';
 
 const page = usePage();
-const graphData = page.props.graph || [];
-const towns = page.props.towns || [];
+const graphData = Array.isArray(page.props.graph) ? page.props.graph : [];
+const towns = Array.isArray(page.props.towns) ? page.props.towns : [];
 
-const selectedBranch = ref(null);
-const selectedAgencyId = ref(null);
+// Define a type for branch objects (adjust fields as needed)
+type Branch = { id: number; name: string; towns?: any[] };
+const selectedBranch = ref<Branch | null>(null);
+const selectedAgencyId = ref<number|null>(null);
 
-const orgNetworkRef = ref(null);
-const townsNetworkRef = ref(null);
+import type { Network } from 'vis-network';
+const orgNetworkRef = ref<Network | null>(null);
+const townsNetworkRef = ref<Network | null>(null);
 
 // Track expanded state - load from localStorage if available
-const loadExpandedState = (key) => {
+const loadExpandedState = (key: string) => {
   try {
     const stored = localStorage.getItem(`orgGraph_${key}`);
     return stored ? new Set(JSON.parse(stored)) : new Set();
@@ -119,7 +27,7 @@ const loadExpandedState = (key) => {
   }
 };
 
-const saveExpandedState = (key, set) => {
+const saveExpandedState = (key: string, set: Set<any>) => {
   try {
     localStorage.setItem(`orgGraph_${key}`, JSON.stringify([...set]));
   } catch {}
@@ -130,23 +38,29 @@ const expandedDelegates = ref(loadExpandedState('delegates'));
 const expandedBranches = ref(loadExpandedState('branches'));
 const expandedDistricts = ref(loadExpandedState('districts'));
 
-function selectAgency(id) {
+function selectAgency(id: number | null) {
   selectedAgencyId.value = id;
   selectedBranch.value = null;
 }
 
-function nodeId(type, id) {
+function nodeId(type: string, id: number) {
   return `${type}-${id}`;
 }
 
-function getDistrictId(town) {
-  if (!town) return null;
-  if (town.district && (town.district.id || town.district.id === 0)) return town.district.id;
-  if (town.districtId || town.districtId === 0) return town.districtId;
+function getDistrictId(town: any): number | null {
+  if (!town) {
+    return null;
+  }
+  if (town.district && (typeof town.district.id === 'number')) {
+    return town.district.id;
+  }
+  if (typeof town.districtId === 'number') {
+    return town.districtId;
+  }
   return null;
 }
 
-function getDistrictColor(id, darker = false, lighten = 1) {
+function getDistrictColor(id: number | null, darker = false, lighten = 1) {
   if (id === null || id === undefined) return '#9CA3AF';
   const hue = (Number(id) * 57) % 360;
   const lightness = darker ? 35 : (42 * lighten);
@@ -161,10 +75,10 @@ const agenciesToRender = computed(() => {
 
 const districtsList = computed(() => {
   const map = new Map();
-  agenciesToRender.value.forEach(agency => {
-    (agency.delegates || []).forEach(delegate => {
-      (delegate.branches || []).forEach(branch => {
-        (branch.towns || []).forEach(town => {
+  agenciesToRender.value.forEach((agency: any) => {
+    (agency.delegates || []).forEach((delegate: any) => {
+      (delegate.branches || []).forEach((branch: any) => {
+        (branch.towns || []).forEach((town: any) => {
           const did = getDistrictId(town);
           if (did === null) return;
           if (!map.has(did)) map.set(did, { id: did, name: (town.district && town.district.name) || `District ${did}` });
@@ -182,13 +96,13 @@ const districtsList = computed(() => {
 
 // Build organization graph data (agencies → delegates → branches → towns)
 function buildOrgGraphData() {
-  const nodes = [];
-  const edges = [];
+  const nodes: any[] = [];
+  const edges: any[] = [];
 
-  agenciesToRender.value.forEach(agency => {
+  agenciesToRender.value.forEach((agency: any) => {
     nodes.push({ id: nodeId('agency', agency.id), label: agency.name, group: 'agency', level: 0 });
     const isAgencyExpanded = expandedAgencies.value.has(agency.id);
-    agency.delegates.forEach(delegate => {
+    agency.delegates.forEach((delegate: any) => {
       nodes.push({ 
         id: nodeId('delegate', delegate.id), 
         label: delegate.name, 
@@ -202,7 +116,7 @@ function buildOrgGraphData() {
         hidden: !isAgencyExpanded
       });
       const isDelegateExpanded = expandedDelegates.value.has(delegate.id);
-      delegate.branches.forEach(branch => {
+      delegate.branches.forEach((branch: any) => {
         nodes.push({ 
           id: nodeId('branch', branch.id), 
           label: branch.name, 
@@ -218,7 +132,7 @@ function buildOrgGraphData() {
         });
         
         // Add linked towns to the organization chart
-        (branch.towns || []).forEach(town => {
+        (branch.towns || []).forEach((town: any) => {
           const did = getDistrictId(town);
           nodes.push({ 
             id: nodeId('town', town.id), 
@@ -253,16 +167,16 @@ function buildOrgGraphData() {
 
 // Build towns graph data (districts → towns) - exclude already linked towns
 function buildTownsGraphData() {
-  const nodes = [];
-  const edges = [];
+  const nodes: any[] = [];
+  const edges: any[] = [];
   const edgeKeys = new Set();
 
   // Collect IDs of towns that are already linked to branches
   const linkedTownIds = new Set();
-  agenciesToRender.value.forEach(agency => {
-    (agency.delegates || []).forEach(delegate => {
-      (delegate.branches || []).forEach(branch => {
-        (branch.towns || []).forEach(town => {
+  agenciesToRender.value.forEach((agency: any) => {
+    (agency.delegates || []).forEach((delegate: any) => {
+      (delegate.branches || []).forEach((branch: any) => {
+        (branch.towns || []).forEach((town: any) => {
           linkedTownIds.add(town.id);
         });
       });
@@ -271,15 +185,15 @@ function buildTownsGraphData() {
 
   // Collect all unlinked towns
   const allTowns = new Map();
-  (towns || []).forEach(town => {
+  (towns || []).forEach((town: any) => {
     if (!linkedTownIds.has(town.id) && !allTowns.has(town.id)) {
       allTowns.set(town.id, town);
     }
   });
 
   // Group towns by district
-  const districtMap = new Map();
-  Array.from(allTowns.values()).forEach(town => {
+  const districtMap: Map<number, any> = new Map();
+  Array.from(allTowns.values()).forEach((town: any) => {
     const did = getDistrictId(town);
     if (did !== null) {
       if (!districtMap.has(did)) {
@@ -315,8 +229,8 @@ function buildTownsGraphData() {
       });
 
       district.towns
-        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-        .forEach(town => {
+        .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+        .forEach((town: any) => {
           const isDistrictExpanded = expandedDistricts.value.has(district.id);
           nodes.push({ 
             id: nodeId('town', town.id), 
@@ -425,14 +339,14 @@ async function renderOrgNetwork() {
       zoomView: true
     },
     edges: { 
-      smooth: { type: 'continuous' }, 
+      smooth: { enabled: true, type: 'continuous', roundness: 0.5 }, 
       color: { color: '#9ca3af', highlight: '#6b7280' },
       width: 2
     },
   };
 
   if (orgNetworkRef.value) {
-    try { orgNetworkRef.value.destroy(); } catch (e) { /* ignore */ }
+    try { orgNetworkRef.value.destroy(); } catch { /* ignore */ }
     container.innerHTML = '';
   }
 
@@ -465,8 +379,8 @@ async function renderOrgNetwork() {
           saveExpandedState('agencies', expandedAgencies.value);
           
           // Batch all updates
-          const nodesToUpdate = [];
-          const edgesToUpdate = [];
+          const nodesToUpdate: { id: string | number; hidden: boolean }[] = [];
+          const edgesToUpdate: { id: string | number; hidden: boolean }[] = [];
           
           delegatesToToggle.forEach(delegate => {
             nodesToUpdate.push({ id: delegate.id, hidden: shouldHide });
@@ -529,8 +443,8 @@ async function renderOrgNetwork() {
           saveExpandedState('delegates', expandedDelegates.value);
           
           // Batch all updates
-          const nodesToUpdate = [];
-          const edgesToUpdate = [];
+          const nodesToUpdate: { id: string | number; hidden: boolean }[] = [];
+          const edgesToUpdate: { id: string | number; hidden: boolean }[] = [];
           
           branchesToToggle.forEach(branch => {
             nodesToUpdate.push({ id: branch.id, hidden: shouldHide });
@@ -579,8 +493,8 @@ async function renderOrgNetwork() {
           saveExpandedState('branches', expandedBranches.value);
           
           // Batch all updates
-          const nodesToUpdate = [];
-          const edgesToUpdate = [];
+          const nodesToUpdate: { id: string | number; hidden: boolean }[] = [];
+          const edgesToUpdate: { id: string | number; hidden: boolean }[] = [];
           
           linkedTowns.forEach(town => {
             nodesToUpdate.push({ id: town.id, hidden: shouldHide });
@@ -596,9 +510,12 @@ async function renderOrgNetwork() {
         }
         
         // Also select branch for linking
-        const node = nodesDataSet.get(nodeId);
-        if (node && node.branchData) {
-          selectedBranch.value = node.branchData;
+        let node = nodesDataSet.get(nodeId);
+        if (Array.isArray(node)) {
+          node = node[0];
+        }
+        if (node && typeof node === 'object' && 'branchData' in node) {
+          selectedBranch.value = (node as any).branchData;
         }
       }
     }
@@ -661,14 +578,14 @@ async function renderTownsNetwork() {
       enabled: false
     },
     edges: { 
-      smooth: { type: 'continuous' }, 
+      smooth: { enabled: true, type: 'continuous', roundness: 0.5 }, 
       color: { color: '#9ca3af', highlight: '#6b7280' },
       width: 2
     },
   };
 
   if (townsNetworkRef.value) {
-    try { townsNetworkRef.value.destroy(); } catch (e) { /* ignore */ }
+    try { townsNetworkRef.value.destroy(); } catch { /* ignore */ }
     container.innerHTML = '';
   }
 
@@ -700,8 +617,8 @@ async function renderTownsNetwork() {
           saveExpandedState('districts', expandedDistricts.value);
           
           // Batch all updates
-          const nodesToUpdate = [];
-          const edgesToUpdate = [];
+          const nodesToUpdate: { id: string | number; hidden: boolean }[] = [];
+          const edgesToUpdate: { id: string | number; hidden: boolean }[] = [];
           
           townsToToggle.forEach(town => {
             nodesToUpdate.push({ id: town.id, hidden: shouldHide });
@@ -721,20 +638,26 @@ async function renderTownsNetwork() {
       
       // Link town to selected branch
       if (nodeId.startsWith('town-') && selectedBranch.value) {
-        const node = nodesDataSet.get(nodeId);
+        let node = nodesDataSet.get(nodeId);
+        if (Array.isArray(node)) {
+          node = node[0];
+        }
         console.log('Town clicked:', { nodeId, node, selectedBranch: selectedBranch.value });
         
-        if (node && node.townData) {
-          const townId = node.townData.id;
+        // Unwrap node if it's an array
+        const nodeObj = Array.isArray(node) ? node[0] : node;
+        if (nodeObj && nodeObj.townData) {
+          const townId = nodeObj.townData.id;
           const branchId = selectedBranch.value.id;
           
-          console.log('Attempting to link:', { townId, branchId, townName: node.townData.name, branchName: selectedBranch.value.name });
+          console.log('Attempting to link:', { townId, branchId, townName: nodeObj.townData.name, branchName: selectedBranch.value.name });
           
           axios.post(`/admin/branch/${branchId}/towns`, { town_id: townId })
             .then(response => {
               console.log('Link successful:', response.data);
               // Show success message
-              const message = `✓ Successfully linked "${node.townData.name}" to "${selectedBranch.value.name}"`;
+              const branchName = selectedBranch.value ? selectedBranch.value.name : '';
+              const message = `✓ Successfully linked "${nodeObj.townData.name}" to "${branchName}"`;
               alert(message);
               // Expand the branch to show the newly linked town
               expandedBranches.value.add(branchId);
@@ -781,6 +704,101 @@ watch(() => page.props.graph, (newVal, oldVal) => {
   }
 }, { deep: true });
 </script>
+
+<template>
+  <AdminLayout>
+    <div class="p-6 bg-white dark:bg-slate-900 min-h-screen">
+    <h1 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Organization Graph</h1>
+
+    <div class="flex gap-6">
+      <!-- Sidebar -->
+      <aside class="w-80 bg-white dark:bg-slate-800 rounded-lg p-4 shadow border border-gray-200 dark:border-slate-700">
+        <!-- Agency Filter -->
+        <div class="mb-6">
+          <div class="mb-3 font-medium text-gray-900 dark:text-gray-100">Select Agency</div>
+          <div class="space-y-2 overflow-auto max-h-48">
+            <button
+              class="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-900 dark:text-gray-100"
+              :class="{ 'bg-gray-100 dark:bg-slate-700': selectedAgencyId === null }"
+              @click="selectAgency(null)">
+              Show All Agencies
+            </button>
+            <template v-for="agency in graphData" :key="agency.id">
+              <button
+                class="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-900 dark:text-gray-100"
+                :class="{ 'bg-blue-100 dark:bg-blue-900/50 font-semibold': selectedAgencyId === agency.id }"
+                @click="selectAgency(agency.id)">
+                {{ agency.name }}
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Districts Legend -->
+        <div class="mb-6">
+          <div class="mb-3 font-medium text-gray-900 dark:text-gray-100">Districts</div>
+          <div class="space-y-1 max-h-32 overflow-auto">
+            <template v-for="d in districtsList" :key="d.id">
+              <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <span :style="{ background: getDistrictColor(d.id) }" class="w-4 h-4 rounded-sm border border-gray-300 dark:border-gray-600"></span>
+                <span class="truncate">{{ d.name }}</span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Selected Branch -->
+        <div v-if="selectedBranch" class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div class="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Selected Branch:</div>
+          <div class="text-sm font-semibold text-blue-900 dark:text-blue-300">{{ selectedBranch.name }}</div>
+          <div class="mt-2 text-xs text-blue-600 dark:text-blue-400">
+            👉 Click a town below to link it to this branch
+          </div>
+          <button 
+            @click="selectedBranch = null" 
+            class="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline">
+            Clear Selection
+          </button>
+        </div>
+
+        <!-- Instructions -->
+        <div v-else class="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600">
+          <div class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">How to Link Towns:</div>
+          <ol class="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
+            <li>Click on a <strong>branch</strong> in the top graph</li>
+            <li>Expand a <strong>district</strong> in the bottom graph</li>
+            <li>Click on a <strong>town</strong> to link it</li>
+          </ol>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="flex-1 space-y-4">
+        <!-- Organization Graph -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Organization Structure</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Click agencies to expand, click branches to select</p>
+          </div>
+          <div id="org-network" class="bg-white dark:bg-slate-900" style="height: 35vh;"></div>
+        </div>
+
+        <!-- Districts & Towns Graph -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Districts & Towns</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span v-if="selectedBranch" class="text-blue-600 dark:text-blue-400 font-medium">Click a town to link to {{ selectedBranch.name }}</span>
+              <span v-else>Select a branch above first, then click a town to link</span>
+            </p>
+          </div>
+          <div id="towns-network" class="bg-white dark:bg-slate-900" style="height: 35vh;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </AdminLayout>
+</template>
 
 <style scoped>
 /* Graph containers inherit background from parent divs */
