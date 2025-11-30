@@ -10,7 +10,7 @@ use App\Models\ExternalPollingStation;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class PollingStationController extends Controller
+class ExtraPollingStationController extends Controller
 {
     public function index(Request $request): \Inertia\Response
     {
@@ -18,7 +18,7 @@ class PollingStationController extends Controller
         $cities = City::orderBy('name')->get();
         $districts = ElectoralDistrict::orderBy('name')->get();
 
-        return Inertia::render('Admin/PollingStations/Index', [
+        return Inertia::render('admin/ExtraPollingStations/Index', [
             'stations' => $stations,
             'cities' => $cities,
             'districts' => $districts,
@@ -30,7 +30,7 @@ class PollingStationController extends Controller
         $cities = City::orderBy('name')->get();
         $districts = ElectoralDistrict::orderBy('name')->get();
 
-        return Inertia::render('Admin/PollingStations/Create', [
+        return Inertia::render('admin/ExtraPollingStations/Create', [
             'cities' => $cities,
             'districts' => $districts,
         ]);
@@ -46,7 +46,7 @@ class PollingStationController extends Controller
             $station->electoralDistricts()->sync($data['electoral_districts']);
         }
 
-        return redirect()->route('admin.polling-stations.index')->with('success', 'Polling station created.');
+        return redirect()->route('admin.extra-polling-stations.index')->with('success', 'Polling station created.');
     }
 
     public function edit(ExternalPollingStation $polling_station): \Inertia\Response
@@ -55,7 +55,7 @@ class PollingStationController extends Controller
         $cities = City::orderBy('name')->get();
         $districts = ElectoralDistrict::orderBy('name')->get();
 
-        return Inertia::render('Admin/PollingStations/Edit', [
+        return Inertia::render('admin/ExtraPollingStations/Edit', [
             'station' => $station,
             'cities' => $cities,
             'districts' => $districts,
@@ -70,7 +70,7 @@ class PollingStationController extends Controller
 
         $polling_station->electoralDistricts()->sync($data['electoral_districts'] ?? []);
 
-        return redirect()->route('admin.polling-stations.index')->with('success', 'Polling station updated.');
+        return redirect()->route('admin.extra-polling-stations.index')->with('success', 'Polling station updated.');
     }
 
     public function destroy(ExternalPollingStation $polling_station): \Illuminate\Http\RedirectResponse
@@ -78,6 +78,6 @@ class PollingStationController extends Controller
         $polling_station->electoralDistricts()->detach();
         $polling_station->delete();
 
-        return redirect()->route('admin.polling-stations.index')->with('success', 'Polling station deleted.');
+        return redirect()->route('admin.extra-polling-stations.index')->with('success', 'Polling station deleted.');
     }
 }

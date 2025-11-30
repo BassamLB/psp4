@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\ExtraPollingStationController;
+use App\Http\Controllers\Admin\LocalPollingStationController;
 use App\Http\Controllers\Admin\StationAssignmentController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserInvitationController;
@@ -54,7 +56,9 @@ Route::middleware(['auth', 'verified', 'user.allowed'])->group(function () {
         Route::delete('branch/{branch}/towns/{town}', [App\Http\Controllers\Admin\OrgGraphController::class, 'detachTown'])->name('branch.towns.detach');
         Route::get('delegate/{delegate}/district-towns', [App\Http\Controllers\Admin\OrgGraphController::class, 'delegateDistrictTowns'])->name('delegate.district.towns');
         // External Polling Stations CRUD
-        Route::resource('polling-stations', App\Http\Controllers\Admin\PollingStationController::class);
+        Route::resource('extra-polling-stations', ExtraPollingStationController::class);
+        // Local Polling Stations (in-town) CRUD
+        Route::resource('local-polling-stations', LocalPollingStationController::class);
     });
 
     // Ballot Entry API Routes

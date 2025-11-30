@@ -9,6 +9,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { Users, Mail, Monitor, LayoutGrid, MapPin } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
@@ -61,8 +62,20 @@ const footerNavItems = [
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child>
-                        <Link href="/admin/polling-stations"><MapPin class="size-4 mr-2 inline" />محطات الاقتراع الخارجية</Link>
+                        <a><MapPin class="size-4 mr-2 inline" />محطات الاقتراع</a>
                     </SidebarMenuButton>
+                    <SidebarMenuSub>
+                        <SidebarMenuSubItem>
+                            <SidebarMenuSubButton as-child>
+                                <Link href="/admin/extra-polling-stations">خارجي (External)</Link>
+                            </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                        <SidebarMenuSubItem>
+                            <SidebarMenuSubButton as-child>
+                                <Link href="/admin/local-polling-stations">محلي (Local)</Link>
+                            </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                    </SidebarMenuSub>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child>
