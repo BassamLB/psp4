@@ -27,7 +27,7 @@ defineProps<{
 
         <div
             v-if="status"
-            class="mb-4 text-center text-sm font-medium text-green-600"
+            class="mb-4 rounded-lg bg-green-50 p-3 text-center text-sm font-medium text-green-600 dark:bg-green-950/50 dark:text-green-400"
         >
             {{ status }}
         </div>
@@ -36,9 +36,8 @@ defineProps<{
             v-bind="store.form()"
             :reset-on-success="['password']"
             v-slot="{ errors, processing }"
-            class="flex flex-col gap-6"
         >
-            <div class="grid gap-6">
+            <div class="grid gap-4">
                 <div class="grid gap-2">
                     <Label for="email">البريد الإلكتروني</Label>
                     <Input
@@ -56,7 +55,7 @@ defineProps<{
 
                 <div class="grid gap-2">
                     <div class="flex items-center justify-between">
-                        <Label for="password">Password</Label>
+                        <Label for="password">كلمة المرور</Label>
                         <TextLink
                             v-if="canResetPassword"
                             :href="request()"
@@ -73,36 +72,38 @@ defineProps<{
                         required
                         :tabindex="2"
                         autocomplete="current-password"
-                        placeholder="كلمة المرور"
+                        placeholder="••••••••"
                     />
                     <InputError :message="errors.password" />
                 </div>
 
-                <div class="flex items-center justify-between">
-                    <Label for="remember" class="flex items-center space-x-3">
-                        <Checkbox id="remember" name="remember" :tabindex="3" />
-                        <span>تذكّرني</span>
+                <div class="flex items-center gap-2">
+                    <Checkbox id="remember" name="remember" :tabindex="3" />
+                    <Label
+                        for="remember"
+                        class="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        تذكّرني
                     </Label>
                 </div>
 
                 <Button
                     type="submit"
-                    class="mt-4 w-full"
+                    class="w-full"
                     :tabindex="4"
                     :disabled="processing"
                     data-test="login-button"
                 >
-                    <Spinner v-if="processing" />
+                    <Spinner v-if="processing" class="ml-2" />
                     تسجيل الدخول
                 </Button>
             </div>
 
             <div
-                class="text-center text-sm text-muted-foreground"
                 v-if="canRegister"
+                class="mt-4 text-center text-sm text-muted-foreground"
             >
-                إذا كنت غير مسجل، يمكنك الأتصال بمدير الموقع لإنشاء حساب جديد.
-                <!-- <TextLink :href="register()" :tabindex="5">تفعيل حساب</TextLink> -->
+                إذا كنت غير مسجل، يمكنك الاتصال بمدير الموقع لإنشاء حساب جديد.
             </div>
         </Form>
     </AuthBase>

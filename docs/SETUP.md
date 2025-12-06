@@ -53,7 +53,7 @@ Processes ballot entries and aggregates results.
 
 ```powershell
 # Terminal Window #2: Start queue workers
-php artisan queue:work redis --queue=ballot-entry,aggregation,default --tries=3 --timeout=60 --sleep=3 --max-jobs=1000 --max-time=3600
+php artisan queue:work redis --queue=ballot-entry,aggregation,imports,default --tries=3 --timeout=60 --sleep=3 --max-jobs=1000 --max-time=3600
 
 # Alternative: Process jobs one at a time (for debugging)
 php artisan queue:work --once

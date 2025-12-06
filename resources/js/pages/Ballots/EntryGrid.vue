@@ -417,62 +417,62 @@ const onLeave = (el: Element) => {
             <div class="mx-1 sm:px-6 lg:px-8">
                 <!-- Station Header -->
                 <div
-                    class="mb-2 flex justify-between rounded-lg border border-gray-200 bg-white px-6 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    class="mb-2 flex justify-between rounded-lg border border-gray-200 bg-background px-6 py-3 shadow-sm dark:border-gray-700">
                     <div>
 
-                        <h1 class="text-gray-900 dark:text-white">
+                        <h1 class="text-muted-foreground">
                             <span class="text-base">
                                 قلم الإقتراع رقم {{ station.station_number }}
                             </span>
-                            <span class="text-2xl font-bold px-1">
+                            <span class="text-2xl font-bold px-1 text-foreground">
                                 {{ station.town.name }}
                             </span>
-                            <span class="font-bold">
+                            <span class="font-bold text-foreground">
                                 ({{ station.location }})
                             </span>
                         </h1>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <p class="mt-1 text-sm text-muted-foreground">
                             إدخال أوراق الاقتراع - عرض شبكي سريع
                         </p>
                     </div>
                     <div class="grid grid-cols-5 gap-2 text-center">
                         <div
-                            class="rounded-lg border border-gray-200 bg-gray-200 p-3 dark:border-gray-600 dark:bg-gray-700">
-                            <div class="text-xs text-gray-500 dark:text-gray-400">إجمالي الأوراق</div>
+                            class="rounded-lg border border-gray-200 bg-background p-3 dark:border-gray-600">
+                            <div class="text-xs text-muted-foreground">إجمالي الأوراق</div>
                             <div class="flex items-center justify-center">
                                 <span v-if="summary.__optimistic_total"
                                     class="ml-2 inline-block h-2 w-2 rounded-full bg-yellow-600 animate-pulse"
                                     title="Pending"></span>
-                                <div class="text-xl font-bold text-gray-900 dark:text-white">{{
+                                <div class="text-xl font-bold text-foreground">{{
                                     summary.total_ballots_entered }}</div>
                             </div>
                         </div>
                         <div
                             class="rounded-lg border border-blue-200 bg-blue-200 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                            <div class="text-xs text-blue-600 dark:text-blue-400">أصوات اللوائح</div>
+                            <div class="text-xs text-blue-900 dark:text-blue-500">أصوات اللوائح</div>
                             <div class="flex items-center justify-center">
                                 <span v-if="summary.__optimistic_list"
                                     class="ml-2 inline-block h-2 w-2 rounded-full bg-yellow-600 animate-pulse"
                                     title="Pending"></span>
-                                <div class="text-xl font-bold text-blue-900 dark:text-blue-300">{{
+                                <div class="text-xl font-bold text-blue-900 dark:text-blue-500">{{
                                     summary.valid_list_votes }}</div>
 
                             </div>
                         </div>
                         <div
                             class="rounded-lg border border-green-200 bg-green-200 p-3 dark:border-green-800 dark:bg-green-900/20">
-                            <div class="text-xs text-green-600 dark:text-green-400">أصوات تفضيلية</div>
+                            <div class="text-xs text-green-900 dark:text-green-500">أصوات تفضيلية</div>
                             <div class="flex justify-center items-center">
                                 <span v-if="summary.__optimistic_preferential"
                                     class="ml-2 inline-block h-2 w-2 rounded-full bg-yellow-600 animate-pulse"
                                     title="Pending"></span>
-                                <div class="text-xl font-bold text-green-900 dark:text-green-300">{{
+                                <div class="text-xl font-bold text-green-900 dark:text-green-500">{{
                                     summary.valid_preferential_votes }}</div>
                             </div>
                         </div>
                         <div
                             class="rounded-lg border border-yellow-200 bg-cyan-200 p-3 dark:border-yellow-800 dark:bg-cyan-900/20">
-                            <div class="text-xs text-yellow-600 dark:text-yellow-400">أوراق بيضاء</div>
+                            <div class="text-xs text-yellow-900 dark:text-yellow-500">أوراق بيضاء</div>
                             <div class="flex items-center justify-center">
                                 <span v-if="summary.__optimistic_white"
                                     class="ml-2 inline-block h-2 w-2 rounded-full bg-yellow-600 animate-pulse"
@@ -483,7 +483,7 @@ const onLeave = (el: Element) => {
                         </div>
                         <div
                             class="rounded-lg border border-red-200 bg-red-200 p-3 dark:border-red-800 dark:bg-red-900/20">
-                            <div class="text-xs text-red-600 dark:text-red-400">أوراق ملغاة</div>
+                            <div class="text-xs text-red-900 dark:text-red-500">أوراق ملغاة</div>
                             <div class="flex items-center justify-center">
                                 <span v-if="summary.__optimistic_cancelled"
                                     class="ml-2 inline-block h-2 w-2 rounded-full bg-yellow-600 animate-pulse"
@@ -500,7 +500,7 @@ const onLeave = (el: Element) => {
                     <!-- Ballot Entry Grid Form -->
                     <div>
                         <div
-                            class="rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                            class="rounded-lg border border-gray-200 bg-background p-2 shadow-sm dark:border-gray-700">
                             <div class="mb-2 flex items-center justify-between">
                                 <h2 class="text-base font-semibold text-gray-900 dark:text-white">إدخال ورقة اقتراع</h2>
                                 <div v-if="lastUpdate" class="flex items-center gap-2">
@@ -519,7 +519,7 @@ const onLeave = (el: Element) => {
                                     'w-50 rounded-lg border-2 px-4 py-2 font-semibold transition-all duration-200',
                                     ballotMode === 'white'
                                         ? 'border-yellow-500 bg-yellow-50 text-yellow-700 shadow-md dark:border-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                        : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-400 hover:bg-yellow-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-yellow-500 dark:hover:bg-yellow-900/20'
+                                        : 'border-gray-300 bg-background text-gray-700 hover:border-yellow-400 hover:bg-yellow-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-yellow-500 dark:hover:bg-yellow-900/20'
                                 ]">
                                     <TransitionGroup name="fade-slide-x">
                                         <span v-if="ballotMode === 'white'" key="selected"
@@ -540,7 +540,7 @@ const onLeave = (el: Element) => {
                                     'w-50 rounded-lg border-2 px-4 py-2 font-semibold transition-all duration-200',
                                     ballotMode === 'cancelled'
                                         ? 'border-red-500 bg-red-50 text-red-700 shadow-md dark:border-red-600 dark:bg-red-900/30 dark:text-red-300'
-                                        : 'border-gray-300 bg-white text-gray-700 hover:border-red-400 hover:bg-red-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-red-500 dark:hover:bg-red-900/20'
+                                        : 'border-gray-300 bg-background text-gray-700 hover:border-red-400 hover:bg-red-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-red-500 dark:hover:bg-red-900/20'
                                 ]">
                                     <TransitionGroup name="fade-slide-x">
                                         <span v-if="ballotMode === 'cancelled'" key="selected"
@@ -558,7 +558,7 @@ const onLeave = (el: Element) => {
                                 </button>
 
                                 <button v-if="ballotMode !== null" @click="clearSelection"
-                                    class="w-50 rounded-lg border-2 border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                                    class="w-50 rounded-lg border-2 border-gray-300 bg-background px-4 py-2 font-semibold text-gray-700 transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-gray-500 dark:hover:bg-gray-600">
                                     إلغاء
                                 </button>
                             </div>
@@ -592,7 +592,7 @@ const onLeave = (el: Element) => {
                                             :class="[
                                                 selectedListId === list.id
                                                     ? 'border-blue-500 bg-blue-50/50 shadow-md dark:border-blue-400 dark:bg-blue-900/20'
-                                                    : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+                                                    : 'border-gray-300 bg-white dark:bg-gray-700 dark:border-gray-600 '
                                             ]">
                                             <!-- List Header (Clickable) -->
                                             <button @click="handleListClick(list.id)"
@@ -605,7 +605,7 @@ const onLeave = (el: Element) => {
                                                 <div class="flex flex-col gap-2 p-1">
                                                     <div class="flex items-center gap-2">
                                                         <span
-                                                            class="flex h-7 w-7 items-center justify-center rounded-md bg-gray-50 dark:bg-gray-700 text-sm font-bold text-gray-700 dark:text-gray-100 shadow-sm">
+                                                            class="flex h-7 w-7 items-center justify-center rounded-md bg-background text-sm font-bold text-gray-700 dark:text-gray-100 shadow-sm">
                                                             {{ list.number }}
                                                         </span>
                                                         <span class="text-base font-bold text-gray-900 dark:text-white">
@@ -648,7 +648,7 @@ const onLeave = (el: Element) => {
                                                     :class="[
                                                         selectedCandidateId === candidate.id && selectedListId === list.id
                                                             ? 'text-white shadow-md'
-                                                            : 'border border-gray-300 bg-gray-50 text-gray-900 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-400'
+                                                            : 'border border-gray-300 bg-background text-gray-900 hover:bg-gray-200 dark:border-gray-600 dark:text-white dark:hover:bg-gray-400'
                                                     ]"
                                                     :style="selectedCandidateId === candidate.id ? { backgroundColor: list.color } : {}">
                                                     <div class="font-semibold">{{ candidate.full_name }}</div>

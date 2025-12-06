@@ -46,6 +46,6 @@ class ProfessionSeeder extends Seeder
             Profession::create(['name' => $profession]);
         }
 
-        echo 'تم إنشاء '.count($professions)." مهنة بنجاح.\n";
+        $this->command->info('Successfully seeded professions!');
     }
 }

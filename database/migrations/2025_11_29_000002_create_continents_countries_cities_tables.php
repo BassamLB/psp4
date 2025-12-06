@@ -18,6 +18,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::create('countries', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('continent_id')->nullable()->constrained('continents')->nullOnDelete();
+
+            $table->string('name_ar', 100)->unique();
+            $table->string('name_en', 100)->unique();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
         Schema::create('cities', function (Blueprint $table) {
             $table->id();
             $table->string('name');

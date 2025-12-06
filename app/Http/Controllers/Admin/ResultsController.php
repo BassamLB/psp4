@@ -96,7 +96,13 @@ class ResultsController extends Controller
                 // intersect with trackedStationIds to ensure only tracked station votes are counted
                 $stationIdsForEd = array_values(array_intersect($stationIdsForEd, $trackedStationIds));
                 $votes = count($stationIdsForEd) ? BallotEntry::validVotes()->whereIn('polling_station_id', $stationIdsForEd)->count() : 0;
-                $children[] = ['id' => $ed->id, 'name' => $ed->name, 'votes' => $votes, 'type' => 'electoral_district'];
+                $children[] = [
+                    'id' => $ed->id,
+                    'name' => $ed->name,
+                    'votes' => $votes,
+                    'stations_count' => count($stationIdsForEd),
+                    'type' => 'electoral_district',
+                ];
             }
         } elseif ($level === 'electoral_district' && $id) {
             // children are Districts under this electoral district
@@ -104,23 +110,46 @@ class ResultsController extends Controller
             foreach ($districts as $d) {
                 $townIds = Town::where('district_id', $d->id)->pluck('id')->toArray();
                 $stationIdsForD = PollingStation::whereIn('town_id', $townIds)->pluck('id')->toArray();
+                // restrict to tracked stations
+                $stationIdsForD = array_values(array_intersect($stationIdsForD, $trackedStationIds));
                 $votes = count($stationIdsForD) ? BallotEntry::validVotes()->whereIn('polling_station_id', $stationIdsForD)->count() : 0;
-                $children[] = ['id' => $d->id, 'name' => $d->name, 'votes' => $votes, 'type' => 'district'];
+                $children[] = [
+                    'id' => $d->id,
+                    'name' => $d->name,
+                    'votes' => $votes,
+                    'stations_count' => count($stationIdsForD),
+                    'type' => 'district',
+                ];
             }
         } elseif ($level === 'district' && $id) {
             // children are Towns
             $towns = Town::where('district_id', $id)->orderBy('name')->get();
             foreach ($towns as $t) {
                 $stationIdsForT = PollingStation::where('town_id', $t->id)->pluck('id')->toArray();
+                // restrict to tracked stations
+                $stationIdsForT = array_values(array_intersect($stationIdsForT, $trackedStationIds));
                 $votes = count($stationIdsForT) ? BallotEntry::validVotes()->whereIn('polling_station_id', $stationIdsForT)->count() : 0;
-                $children[] = ['id' => $t->id, 'name' => $t->name, 'votes' => $votes, 'type' => 'town'];
+                $children[] = [
+                    'id' => $t->id,
+                    'name' => $t->name,
+                    'votes' => $votes,
+                    'stations_count' => count($stationIdsForT),
+                    'type' => 'town',
+                ];
             }
         } elseif ($level === 'town' && $id) {
             // children are Polling Stations
-            $stations = PollingStation::where('town_id', $id)->orderBy('station_number')->get();
+            // only include tracked stations here
+            $stations = PollingStation::where('town_id', $id)->whereIn('id', $trackedStationIds)->orderBy('station_number')->get();
             foreach ($stations as $s) {
                 $votes = BallotEntry::validVotes()->where('polling_station_id', $s->id)->count();
-                $children[] = ['id' => $s->id, 'name' => 'مركز الاقتراع رقم '.$s->station_number, 'votes' => $votes, 'type' => 'station'];
+                $children[] = [
+                    'id' => $s->id,
+                    'name' => 'مركز الاقتراع رقم '.$s->station_number,
+                    'votes' => $votes,
+                    'stations_count' => 1,
+                    'type' => 'station',
+                ];
             }
         } elseif ($level === 'station' && $id) {
             // station detail: show candidate-level breakdown

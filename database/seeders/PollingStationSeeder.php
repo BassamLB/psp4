@@ -154,10 +154,6 @@ class PollingStationSeeder extends Seeder
                         'to_sijil' => (int) $toRegister,
                     ]
                 );
-
-                // Update registered voters count
-                $votersInRange = ((int) $toRegister - (int) $fromRegister) + 1;
-                $currentStation->increment('registered_voters', $votersInRange);
             }
 
             DB::commit();

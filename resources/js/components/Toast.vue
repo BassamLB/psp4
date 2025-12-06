@@ -136,7 +136,7 @@ const removeToast = (id: number) => {
 const getBgColor = (type: string) => {
   switch (type) {
     case 'success':
-      return 'bg-green-50 dark:bg-green-900';
+      return 'bg-card';
     case 'error':
       return 'bg-red-50 dark:bg-red-900';
     case 'warning':
@@ -149,7 +149,7 @@ const getBgColor = (type: string) => {
 const getTextColor = (type: string) => {
   switch (type) {
     case 'success':
-      return 'text-green-800 dark:text-green-200';
+      return 'text-foreground';
     case 'error':
       return 'text-red-800 dark:text-red-200';
     case 'warning':

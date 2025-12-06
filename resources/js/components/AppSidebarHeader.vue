@@ -2,6 +2,7 @@
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType } from '@/types';
+import ThemeToggle from '@/components/ThemeToggle.vue';
 
 withDefaults(
     defineProps<{
@@ -22,6 +23,10 @@ withDefaults(
             <template v-if="breadcrumbs && breadcrumbs.length > 0">
                 <Breadcrumbs :breadcrumbs="breadcrumbs" />
             </template>
+        </div>
+
+        <div class="ml-auto flex items-center gap-2">
+            <ThemeToggle />
         </div>
     </header>
 </template>

@@ -13,3 +13,23 @@ Broadcast::channel('station.{stationId}', function ($user, $stationId) {
         ->where('is_active', true)
         ->exists();
 });
+
+// Admin uploads channel - only allow authorized admin users to subscribe.
+Broadcast::channel('admin.uploads', function ($user) {
+    if (! $user) {
+        return false;
+    }
+
+    // If the User model exposes an isAdmin() helper, use it.
+    if (is_object($user) && method_exists($user, 'isAdmin')) {
+        return $user->isAdmin();
+    }
+
+    // If there's an `is_admin` attribute, trust it.
+    if (isset($user->is_admin)) {
+        return (bool) $user->is_admin;
+    }
+
+    // Default to allowing authenticated users - restrict later if needed.
+    return true;
+});

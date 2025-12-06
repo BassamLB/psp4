@@ -89,14 +89,14 @@ const getRoleLabel = (role: string) => {
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">تعيينات الأقلام</h1>
                     <Link
                         href="/admin/station-assignments/create"
-                        class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700"
+                        class="rounded-lg btn-brand px-5 py-2.5 text-sm font-medium focus-ring-brand"
                     >
                         + إضافة تعيين جديد
                     </Link>
                 </div>
 
                 <!-- Filters -->
-                <div class="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div class="mb-6 rounded-lg border border-gray-200 bg-background p-6 shadow-sm dark:border-gray-700">
                     <div class="grid gap-4 md:grid-cols-4">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">بحث</label>
@@ -104,7 +104,7 @@ const getRoleLabel = (role: string) => {
                                 v-model="search"
                                 type="text"
                                 placeholder="اسم المستخدم أو رقم القلم..."
-                                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                class="block w-full rounded-lg border border-gray-300 bg-background p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600  dark:text-white"
                                 @keyup.enter="applyFilters"
                             />
                         </div>
@@ -112,7 +112,7 @@ const getRoleLabel = (role: string) => {
                             <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">الدور</label>
                             <select
                                 v-model="roleFilter"
-                                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                class="block w-full rounded-lg border border-gray-300 bg-background p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:text-white"
                                 @change="applyFilters"
                             >
                                 <option value="">الكل</option>
@@ -125,7 +125,7 @@ const getRoleLabel = (role: string) => {
                             <label class="mb-2 block text-sm font-medium text-gray-900 dark:text-white">الحالة</label>
                             <select
                                 v-model="statusFilter"
-                                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                class="block w-full rounded-lg border border-gray-300 bg-background p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600  dark:text-white"
                                 @change="applyFilters"
                             >
                                 <option value="">الكل</option>
@@ -136,7 +136,7 @@ const getRoleLabel = (role: string) => {
                         <div class="flex items-end">
                             <button
                                 type="button"
-                                class="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:border-gray-600 dark:hover:bg-gray-700"
+                                class="w-full rounded-lg border border-gray-300 bg-background px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:border-gray-600  dark:text-white dark:hover:border-gray-600 dark:hover:bg-gray-700"
                                 @click="search = ''; roleFilter = ''; statusFilter = ''; applyFilters()"
                             >
                                 إعادة تعيين
@@ -146,10 +146,10 @@ const getRoleLabel = (role: string) => {
                 </div>
 
                 <!-- Table -->
-                <div class="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div class="rounded-lg border border-gray-200 bg-background shadow-sm dark:border-gray-700 ">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-                            <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                            <thead class="bg-background text-xs uppercase text-gray-700 dark:text-gray-400">
                                 <tr>
                                     <th scope="col" class="px-6 py-3">المستخدم</th>
                                     <th scope="col" class="px-6 py-3">رقم القلم</th>
@@ -165,7 +165,7 @@ const getRoleLabel = (role: string) => {
                                 <tr
                                     v-for="assignment in assignments.data"
                                     :key="assignment.id"
-                                    class="border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600"
+                                        class="border-b bg-background hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-600"
                                 >
                                     <td class="px-6 py-4">
                                         <div class="font-medium text-gray-900 dark:text-white">{{ assignment.user.name }}</div>
@@ -174,42 +174,20 @@ const getRoleLabel = (role: string) => {
                                     <td class="px-6 py-4 font-medium">{{ assignment.polling_station.station_number }}</td>
                                     <td class="px-6 py-4">{{ assignment.polling_station.town.name }}</td>
                                     <td class="px-6 py-4">
-                                        <span class="rounded bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                                        <span class="rounded px-2.5 py-0.5 text-xs font-medium badge-role">
                                             {{ getRoleLabel(assignment.role) }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span
-                                            v-if="assignment.is_active"
-                                            class="rounded bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300"
-                                        >
-                                            نشط
-                                        </span>
-                                        <span
-                                            v-else
-                                            class="rounded bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                                        >
-                                            غير نشط
-                                        </span>
+                                        <span v-if="assignment.is_active" class="rounded px-2.5 py-0.5 text-xs font-medium badge-success">نشط</span>
+                                        <span v-else class="rounded px-2.5 py-0.5 text-xs font-medium badge-muted">غير نشط</span>
                                     </td>
                                     <td class="px-6 py-4 text-xs">{{ new Date(assignment.assigned_at).toLocaleDateString('ar-LB') }}</td>
                                     <td class="px-6 py-4 text-xs">{{ assignment.assigned_by.name }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex gap-2">
-                                            <button
-                                                type="button"
-                                                class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500"
-                                                @click="toggleStatus(assignment.id)"
-                                            >
-                                                {{ assignment.is_active ? 'تعطيل' : 'تفعيل' }}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="text-sm font-medium text-red-600 hover:underline dark:text-red-500"
-                                                @click="deleteAssignment(assignment.id)"
-                                            >
-                                                حذف
-                                            </button>
+                                            <button type="button" class="text-sm font-medium text-brand hover:underline" @click="toggleStatus(assignment.id)">{{ assignment.is_active ? 'تعطيل' : 'تفعيل' }}</button>
+                                            <button type="button" class="text-sm font-medium text-red-600 hover:underline dark:text-red-500" @click="deleteAssignment(assignment.id)">حذف</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -223,7 +201,7 @@ const getRoleLabel = (role: string) => {
                     </div>
 
                     <!-- Pagination -->
-                    <div v-if="assignments.links.length > 3" class="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+                        <div v-if="assignments.links.length > 3" class="border-t border-gray-200 bg-background px-4 py-3 dark:border-gray-700">
                         <div class="flex items-center justify-between">
                             <div class="text-sm text-gray-700 dark:text-gray-400">
                                 صفحة {{ assignments.current_page }} من {{ assignments.last_page }}
@@ -236,8 +214,8 @@ const getRoleLabel = (role: string) => {
                                     :class="[
                                         'rounded px-3 py-1 text-sm',
                                         link.active
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300',
+                                            ? 'btn-brand text-white'
+                                            : 'bg-background text-gray-700 hover:bg-gray-100 dark:text-gray-300',
                                         !link.url && 'cursor-not-allowed opacity-50',
                                     ]"
                                 >

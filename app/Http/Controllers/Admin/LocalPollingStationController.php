@@ -37,6 +37,11 @@ class LocalPollingStationController extends Controller
         ]);
     }
 
+    public function show(PollingStation $local_polling_station): \Illuminate\Http\RedirectResponse
+    {
+        return redirect()->route('admin.local-polling-stations.edit', $local_polling_station);
+    }
+
     public function store(StorePollingStationRequest $request): \Illuminate\Http\RedirectResponse
     {
         $data = $request->validated();
@@ -46,13 +51,29 @@ class LocalPollingStationController extends Controller
         return redirect()->route('admin.local-polling-stations.index')->with('success', 'Polling station created.');
     }
 
-    public function edit(PollingStation $local_polling_station): \Inertia\Response
+    public function edit(Request $request, PollingStation $local_polling_station): \Inertia\Response
     {
         $station = $local_polling_station->load('town');
         $towns = Town::orderBy('name')->get();
         $elections = Election::orderBy('id', 'desc')->get();
 
         return Inertia::render('admin/LocalPollingStations/Edit', [
+            'station' => $station,
+            'towns' => $towns,
+            'elections' => $elections,
+        ]);
+    }
+
+    /**
+     * Return JSON payload for modal editing.
+     */
+    public function payload(PollingStation $local_polling_station): \Illuminate\Http\JsonResponse
+    {
+        $station = $local_polling_station->load('town');
+        $towns = Town::orderBy('name')->get();
+        $elections = Election::orderBy('id', 'desc')->get();
+
+        return response()->json([
             'station' => $station,
             'towns' => $towns,
             'elections' => $elections,

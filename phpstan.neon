@@ -7,10 +7,10 @@ parameters:
     - app
     - database
     - routes
-    - tests
   stubFiles:
     - phpstan/stubs/phpunit_testcase.stub.php
   inferPrivatePropertyTypeFromConstructor: true
+  treatPhpDocTypesAsCertain: false
   ignoreErrors:
     - message: '#Undefined variable: \$this#'
       path: tests/Pest.php

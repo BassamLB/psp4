@@ -11,22 +11,22 @@ const toggleTheme = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-200 dark:bg-gray-900">
+    <div class="min-h-screen bg-sidebar ">
         <Head>
             <title>{{ $page.props.title }}</title>
         </Head>
 
         <!-- Header -->
-        <header class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 sticky top-0 z-30 shadow-md">
+        <header class="border-b bg-background sticky top-0 z-30 shadow-md">
             <div class="mx-auto w-full px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between">
                     <!-- Logo -->
                     <div class="flex items-center gap-3">
-                        <AppLogoIcon class="size-11 text-blue-600 dark:text-blue-400" />
+                        <AppLogoIcon class="size-11" />
                         <div>
-                            <h1 class="text-lg font-bold text-gray-900 dark:text-white">
+                            <h1 class="text-lg font-bold text-foreground">
 حزب التقدمي الاشتراكي                            </h1>
-                            <p class="text-base text-gray-500 dark:text-gray-400">
+                            <p class="text-base text-muted-foreground">
 لـــــــــجــــــــنـــــــة الـــــــمــــــــعـــــــلـــــــومــــــاتــــــيــــــة                            </p>
                         </div>
                     </div>

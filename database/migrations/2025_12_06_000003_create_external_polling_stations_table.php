@@ -29,13 +29,12 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('electoral_district_id');
             $table->unsignedBigInteger('external_polling_station_id');
-            // Avoid adding FK constraint to electoral_districts here to prevent ordering issues
-            // when electoral_districts migration may run later. The pivot still enforces
-            // uniqueness and can be constrained later if desired.
-            $table->foreign('external_polling_station_id', 'ed_eps_eps_id_fk')
-                ->references('id')->on('external_polling_stations')->cascadeOnDelete();
             $table->unique(['electoral_district_id', 'external_polling_station_id'], 'ed_eps_unique');
             $table->timestamps();
+
+            // Explicit, short foreign key names to avoid MySQL identifier length limits
+            $table->foreign('electoral_district_id', 'fk_ed_eps_ed')->references('id')->on('electoral_districts')->onDelete('cascade');
+            $table->foreign('external_polling_station_id', 'fk_ed_eps_eps')->references('id')->on('external_polling_stations')->onDelete('cascade');
         });
     }
 
@@ -44,6 +43,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('electoral_district_external_polling_station', function (Blueprint $table) {
+            // Drop by explicit constraint names used in the up() method
+            $table->dropForeign('fk_ed_eps_ed');
+            $table->dropForeign('fk_ed_eps_eps');
+        });
         Schema::dropIfExists('electoral_district_external_polling_station');
         Schema::dropIfExists('external_polling_stations');
     }

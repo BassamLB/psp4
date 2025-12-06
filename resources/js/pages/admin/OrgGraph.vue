@@ -707,19 +707,19 @@ watch(() => page.props.graph, (newVal, oldVal) => {
 
 <template>
   <AdminLayout>
-    <div class="p-6 bg-white dark:bg-slate-900 min-h-screen">
+    <div class="p-6 bg-background min-h-screen">
     <h1 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Organization Graph</h1>
 
     <div class="flex gap-6">
       <!-- Sidebar -->
-      <aside class="w-80 bg-white dark:bg-slate-800 rounded-lg p-4 shadow border border-gray-200 dark:border-slate-700">
+      <aside class="w-80 bg-background rounded-lg p-4 shadow border border-gray-200 dark:border-slate-700">
         <!-- Agency Filter -->
         <div class="mb-6">
           <div class="mb-3 font-medium text-gray-900 dark:text-gray-100">Select Agency</div>
           <div class="space-y-2 overflow-auto max-h-48">
             <button
               class="w-full text-left px-3 py-2 rounded text-sm hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-900 dark:text-gray-100"
-              :class="{ 'bg-gray-100 dark:bg-slate-700': selectedAgencyId === null }"
+              :class="{ 'bg-background': selectedAgencyId === null }"
               @click="selectAgency(null)">
               Show All Agencies
             </button>
@@ -762,7 +762,7 @@ watch(() => page.props.graph, (newVal, oldVal) => {
         </div>
 
         <!-- Instructions -->
-        <div v-else class="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600">
+        <div v-else class="p-3 bg-background/50 rounded-lg border border-gray-200 dark:border-slate-600">
           <div class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">How to Link Towns:</div>
           <ol class="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
             <li>Click on a <strong>branch</strong> in the top graph</li>
@@ -775,24 +775,24 @@ watch(() => page.props.graph, (newVal, oldVal) => {
       <!-- Main Content -->
       <div class="flex-1 space-y-4">
         <!-- Organization Graph -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+        <div class="bg-background rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-background/50">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Organization Structure</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Click agencies to expand, click branches to select</p>
           </div>
-          <div id="org-network" class="bg-white dark:bg-slate-900" style="height: 35vh;"></div>
+          <div id="org-network" class="bg-background" style="height: 35vh;"></div>
         </div>
 
         <!-- Districts & Towns Graph -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+        <div class="bg-background rounded-lg shadow border border-gray-200 dark:border-slate-700 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-background/50">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Districts & Towns</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               <span v-if="selectedBranch" class="text-blue-600 dark:text-blue-400 font-medium">Click a town to link to {{ selectedBranch.name }}</span>
               <span v-else>Select a branch above first, then click a town to link</span>
             </p>
           </div>
-          <div id="towns-network" class="bg-white dark:bg-slate-900" style="height: 35vh;"></div>
+          <div id="towns-network" class="bg-background" style="height: 35vh;"></div>
         </div>
       </div>
     </div>

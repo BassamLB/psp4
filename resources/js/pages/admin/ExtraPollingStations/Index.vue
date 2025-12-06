@@ -31,7 +31,7 @@ function confirmDelete(id: number) {
       <div class="space-y-4">
         <InfiniteScroll data="stations">
           <div v-for="station in stations.data" :key="station.id"
-            class="bg-white rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow">
+            class="bg-background rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
               <div class="flex-1 space-y-2">
                 <div class="flex items-center gap-4">

@@ -408,7 +408,7 @@ class TownSeeder extends Seeder
             ['name' => 'كفرمتى', 'district' => 'عاليه'],
             ['name' => 'كيفون', 'district' => 'عاليه'],
             ['name' => 'مجدل بعنا', 'district' => 'عاليه'],
-            ['name' => 'مجدلايا', 'district' => 'عاليه'],
+            ['name' => 'مجدليا', 'district' => 'عاليه'],
             ['name' => 'محطة بحمدون', 'district' => 'عاليه'],
             ['name' => 'مزرعة النهر', 'district' => 'عاليه'],
             ['name' => 'معصريتي', 'district' => 'عاليه'],
@@ -430,5 +430,6 @@ class TownSeeder extends Seeder
                 ]);
             }
         }
+        $this->command->info('Successfully seeded towns!');
     }
 }

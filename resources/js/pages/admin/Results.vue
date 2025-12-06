@@ -190,14 +190,14 @@ onMounted(async () => {
         <h2 class="text-lg font-semibold mb-3">التنقل</h2>
         <div class="space-y-2">
           <button
-            class="w-full text-left px-3 py-2 rounded-md hover:bg-white/5 transition-colors"
-            :class="{ 'bg-white/5': !activeLevel }"
+            class="w-full text-left px-3 py-2 rounded-md hover:bg-background/5 transition-colors"
+            :class="{ 'bg-background/5': !activeLevel }"
             @click="selectTop()"
           >
             جميع الدوائر الانتخابية
           </button>
           <transition-group name="list" tag="div">
-            <div v-for="child in children" :key="child.type+child.id" class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-white/5 cursor-pointer"
+            <div v-for="child in children" :key="child.type+child.id" class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-background/5 cursor-pointer"
               @click="drill(child)">
               <div>
                 <div class="text-sm font-medium">{{ child.name }}</div>
@@ -226,7 +226,7 @@ onMounted(async () => {
           <section class="p-4 bg-black/10 rounded-lg">
             <div v-if="children.length === 0" class="text-slate-400">لا توجد عناصر فرعية لهذا المستوى.</div>
             <ul class="space-y-2">
-              <li v-for="c in children" :key="c.id" class="flex items-center justify-between px-3 py-2 rounded-md bg-white/2">
+              <li v-for="c in children" :key="c.id" class="flex items-center justify-between px-3 py-2 rounded-md bg-background/2">
                 <div>
                   <div class="font-medium">{{ c.name }}</div>
                   <div class="text-xs text-slate-400">{{ typeLabel(c.type) }}</div>

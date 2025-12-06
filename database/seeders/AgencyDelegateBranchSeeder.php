@@ -101,7 +101,6 @@ class AgencyDelegateBranchSeeder extends Seeder
                             'id' => $agency->id,
                             'user_id' => $agentUserId,
                         ];
-                        $this->command->info("Created agency: {$agencyName}".($agentUserId ? " with agent: {$agentName}" : ''));
                     }
                     $agencyId = $agencies[$agencyName]['id'];
                 }
@@ -126,7 +125,6 @@ class AgencyDelegateBranchSeeder extends Seeder
                                 ['responsible_id' => $delegateUserId]
                             );
                             $delegates[$delegateKey] = $delegate->id;
-                            $this->command->info("Created delegate: {$delegateName} under {$agencyName}".($delegateUserId ? " with responsible: {$delegateResponsible}" : ''));
                         } catch (\Exception $e) {
                             $this->logFailedRecord($rowNumber, $row, "Failed to create delegate '{$delegateName}': ".$e->getMessage());
 
@@ -159,7 +157,6 @@ class AgencyDelegateBranchSeeder extends Seeder
                                 ['responsible_id' => $branchManagerUserId]
                             );
                             $branches[$branchKey] = $branch->id;
-                            $this->command->info("Created branch: {$branchName} under {$delegateName}".($branchManagerUserId ? " with manager: {$branchManager}" : ''));
                         } catch (\Exception $e) {
                             $this->logFailedRecord($rowNumber, $row, "Failed to create branch '{$branchName}': ".$e->getMessage());
 

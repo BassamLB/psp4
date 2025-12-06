@@ -40,20 +40,16 @@ const features = [
 </script>
 
 <template>
-    <Head title="مرحبًا بك">
-        <link rel="preconnect" href="https://rsms.me/" />
-        <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
-    </Head>
+    <Head title="مرحبًا بك" />
 
-    <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
+    <div class="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
         <!-- Main Content Card -->
         <div class="w-full max-w-lg ">
             <CardHeader class="text-center space-y-6 pb-6">
                 <!-- Logo -->
                 <div class="flex justify-center">
                     <div class="relative">
-                        <div class="absolute inset-0 rounded-full bg-primary/20 blur-2xl"></div>
-                        <div class="relative w-32 h-32 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-xl">
+                        <div class="relative w-32 h-32 rounded-full flex items-center justify-center shadow-xl">
                             <img 
                                 src="/images/PSP_Lebanon_logo_394.png" 
                                 alt="شعار الحزب التقدمي الاشتراكي"

@@ -10,16 +10,17 @@ return new class extends Migration
     {
         Schema::create('voters', function (Blueprint $table) {
             $table->id();
-
+            // Family relation: define the column then the constraint
+            $table->foreignId('family_id')->nullable()->constrained('families')->nullOnDelete();
             // Personal Information
-            $table->string('first_name')->index();
-            $table->string('family_name')->index();
-            $table->string('father_name');
-            $table->string('mother_full_name');
-            $table->date('date_of_birth');
-
+            $table->string('first_name')->nullable()->index();
+            $table->string('family_name')->nullable()->index();
+            $table->string('father_name')->nullable();
+            $table->string('mother_full_name')->nullable();
+            $table->date('date_of_birth')->nullable();
             // Foreign Keys
             $table->foreignId('gender_id')->nullable()->constrained('genders')->nullOnDelete();
+            $table->string('personal_sect', 100)->nullable();
             $table->foreignId('sect_id')->nullable()->constrained('sects')->nullOnDelete();
             $table->foreignId('town_id')->nullable()->constrained('towns')->nullOnDelete();
             $table->foreignId('profession_id')->nullable()->constrained('professions')->nullOnDelete();
