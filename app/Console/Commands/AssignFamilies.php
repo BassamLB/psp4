@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class AssignFamilies extends Command
 {
@@ -28,7 +27,7 @@ class AssignFamilies extends Command
     {
         $this->info('Running family assignment...');
 
-        $job = new \App\Jobs\AssignFamiliesToVoters();
+        $job = new \App\Jobs\AssignFamiliesToVoters;
         $job->handle();
 
         $this->info('Family assignment completed!');

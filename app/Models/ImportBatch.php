@@ -23,5 +23,4 @@ class ImportBatch extends Model
     {
         return $this->belongsTo(VoterUpload::class, 'voter_upload_id');
     }
-
 }

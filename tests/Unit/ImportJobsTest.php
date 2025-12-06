@@ -2,6 +2,10 @@
 
 use App\Jobs\ImportVotersToTempTable;
 use App\Models\VoterUpload;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+uses(TestCase::class, RefreshDatabase::class);
 
 it('marks upload error when cleaned_path missing', function () {
     // Use the database (RefreshDatabase is configured globally in TestCase)

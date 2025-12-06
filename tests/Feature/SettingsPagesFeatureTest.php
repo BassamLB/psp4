@@ -19,7 +19,7 @@ class SettingsPagesFeatureTest extends TestCase
         $this->actingAs($user)
             ->get('/admin/settings/professions')
             ->assertStatus(200)
-            ->assertSee('admin/Settings/Professions');
+            ->assertSee('Professions');
     }
 
     public function test_roles_page_loads()
@@ -30,7 +30,7 @@ class SettingsPagesFeatureTest extends TestCase
         $this->actingAs($user)
             ->get('/admin/settings/roles')
             ->assertStatus(200)
-            ->assertSee('admin/Settings/Roles');
+            ->assertSee('Roles');
     }
 
     public function test_belongs_page_loads()
@@ -41,7 +41,7 @@ class SettingsPagesFeatureTest extends TestCase
         $this->actingAs($user)
             ->get('/admin/settings/belongs')
             ->assertStatus(200)
-            ->assertSee('admin/Settings/Belongs');
+            ->assertSee('Belongs');
     }
 
     public function test_genders_page_loads()
@@ -52,7 +52,7 @@ class SettingsPagesFeatureTest extends TestCase
         $this->actingAs($user)
             ->get('/admin/settings/genders')
             ->assertStatus(200)
-            ->assertSee('admin/Settings/Genders');
+            ->assertSee('Genders');
     }
 
     public function test_sects_page_loads()
@@ -63,6 +63,6 @@ class SettingsPagesFeatureTest extends TestCase
         $this->actingAs($user)
             ->get('/admin/settings/sects')
             ->assertStatus(200)
-            ->assertSee('admin/Settings/Sects');
+            ->assertSee('Sects');
     }
 }

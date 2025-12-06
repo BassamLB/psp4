@@ -34,6 +34,7 @@ class MergeVotersFromTempOptimized implements ShouldQueue
             $this->upload->status = 'completed';
             $this->upload->meta = array_merge($meta, ['merge_skipped' => true]);
             $this->upload->save();
+
             return;
         }
 
@@ -64,7 +65,7 @@ class MergeVotersFromTempOptimized implements ShouldQueue
             try {
                 // Single query: INSERT with ON DUPLICATE KEY UPDATE
                 // This is orders of magnitude faster than chunk-based processing
-                $sql = "
+                $sql = '
                     INSERT INTO voters (
                         sijil_number, town_id, first_name, family_name, father_name, mother_full_name,
                         sijil_additional_string, gender_id, sect_id, personal_sect, date_of_birth,
@@ -83,7 +84,7 @@ class MergeVotersFromTempOptimized implements ShouldQueue
                         personal_sect = VALUES(personal_sect),
                         date_of_birth = VALUES(date_of_birth),
                         updated_at = NOW()
-                ";
+                ';
 
                 DB::statement($sql);
                 $affectedRows = DB::getPdo()->lastInsertId() ?: $tempCount;
