@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Events\VoterUploadCleaned;
 use App\Events\VoterUploadProgress;
 use App\Models\ImportBatch;
-use App\Models\Voter;
 use App\Models\VoterImportTemp;
 use App\Models\VoterUpload;
 use Illuminate\Bus\Queueable;
@@ -84,13 +83,14 @@ class MergeVotersFromTemp implements ShouldQueue
 
         $inserted = 0;
         $updated = 0;
+        $skipped = 0;
 
         if (! $dryRun) {
             DB::beginTransaction();
             try {
                 // Use INSERT ... ON DUPLICATE KEY UPDATE for maximum performance
                 // This single query handles both inserts and updates
-                $sql = "
+                $sql = '
                     INSERT INTO voters (
                         sijil_number, town_id, first_name, family_name, father_name, mother_full_name,
                         sijil_additional_string, gender_id, sect_id, personal_sect, date_of_birth,
@@ -109,13 +109,13 @@ class MergeVotersFromTemp implements ShouldQueue
                         personal_sect = VALUES(personal_sect),
                         date_of_birth = VALUES(date_of_birth),
                         updated_at = NOW()
-                ";
+                ';
 
                 DB::statement($sql);
 
                 // Get counts
                 $inserted = DB::affectedRows();
-                
+
                 DB::commit();
 
                 Log::info('MergeVotersFromTemp: Bulk merge completed', [
@@ -144,170 +144,6 @@ class MergeVotersFromTemp implements ShouldQueue
         } catch (\Throwable $e) {
             Log::debug('Failed to broadcast merge completion', ['exception' => $e->getMessage()]);
         }
-                        if (! $dryRun) {
-                            // Upsert based on unique combination: sijil_number + town_id + first_name + family_name + father_name + mother_full_name
-                            DB::table('voters')->upsert($toUpsert, ['sijil_number', 'town_id', 'first_name', 'family_name', 'father_name', 'mother_full_name'], $updateCols);
-                        }
-
-                        DB::commit();
-                        $inserted += count($toUpsert);
-                    } catch (\Throwable $e) {
-                        DB::rollBack();
-                        Log::error('Bulk upsert failed during merge', ['exception' => $e->getMessage()]);
-                        // fallback: process remaining rows individually below
-                        foreach ($rowMap as $key => $groupRows) {
-                            foreach ($groupRows as $r) {
-                                // Process all rows in fallback mode
-                                // fallback to per-row create as safe option
-                                if (empty($r->sijil_number)) {
-                                    $skipped++;
-
-                                    continue;
-                                }
-                                if (! $dryRun) {
-                                    try {
-                                        $v = Voter::create([
-                                            'first_name' => $r->first_name,
-                                            'family_name' => $r->family_name,
-                                            'father_name' => $r->father_name ?? null,
-                                            'mother_full_name' => $r->mother_full_name ?? null,
-                                            'date_of_birth' => $r->date_of_birth,
-                                            'sijil_number' => $r->sijil_number,
-                                            'sijil_additional_string' => $r->sijil_additional_string ?? null,
-                                            'gender_id' => $r->gender_id ?? null,
-                                            'sect_id' => $r->sect_id ?? null,
-                                            'personal_sect' => $r->personal_sect ?? null,
-                                            'town_id' => $r->town_id,
-                                        ]);
-                                        $inserted++;
-                                    } catch (\Throwable $ex) {
-                                        Log::warning('Fallback create failed during merge', ['exception' => $ex->getMessage(), 'temp_id' => $r->id]);
-                                        $skipped++;
-                                    }
-                                } else {
-                                    // Dry run - would have created
-                                }
-                                // Don't save individually here
-                            }
-                        }
-                    }
-                }
-
-                // Emit progress for this chunk (throttled)
-                $processedCount += count($rows);
-                $now = microtime(true);
-                if ($now - $lastBroadcast >= $broadcastThrottle || $processedCount >= $totalToProcess) {
-                    try {
-                        $percent = ($totalToProcess && $totalToProcess > 0) ? (int) floor(($processedCount / $totalToProcess) * 100) : null;
-                        event(new VoterUploadProgress($this->upload, ['processed' => $processedCount, 'total' => $totalToProcess, 'percent' => $percent, 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped]));
-                        $lastBroadcast = $now;
-                    } catch (\Throwable $e) {
-                        Log::debug('Progress broadcast failed during merge', ['exception' => $e->getMessage()]);
-                    }
-                }
-
-                return;
-            }
-
-            // Bulk disabled: fallback to original per-row processing
-            $tempIdsToMark = [];
-            foreach ($rows as $r) {
-                // Basic match: sijil_number + town_id
-                $match = null;
-                if ($r->sijil_number && $r->town_id) {
-                    // primary match: sijil_number + town_id
-                    $candidates = Voter::where('sijil_number', $r->sijil_number)->where('town_id', $r->town_id)->get();
-                    if ($candidates->count() === 1) {
-                        $match = $candidates->first();
-                    } elseif ($candidates->count() > 1) {
-                        // try to disambiguate by exact name + dob
-                        $match = $candidates->where('first_name', $r->first_name)->where('family_name', $r->family_name)->first();
-                        if (! $match && $r->date_of_birth) {
-                            $match = $candidates->where('date_of_birth', $r->date_of_birth)->first();
-                        }
-                        // if still ambiguous, skip
-                        if (! $match && $candidates->count() > 1) {
-                            $tempIdsToMark[] = $r->id;
-                            $skipped++;
-
-                            continue;
-                        }
-                    }
-                }
-
-                if (! empty($match)) {
-                    // Update existing voter if fields differ
-                    $changes = [];
-                    if ($r->first_name && $r->first_name !== $match->first_name) {
-                        $changes['first_name'] = $r->first_name;
-                    }
-                    if ($r->family_name && $r->family_name !== $match->family_name) {
-                        $changes['family_name'] = $r->family_name;
-                    }
-                    if ($r->date_of_birth && $r->date_of_birth !== optional($match->date_of_birth)) {
-                        $changes['date_of_birth'] = $r->date_of_birth;
-                    }
-
-                    if (! empty($changes)) {
-                        if (! $dryRun) {
-                            $match->update($changes);
-                        }
-                        $updated++;
-                        $tempIdsToMark[] = $r->id;
-
-                        continue;
-                    }
-
-                    // nothing to update
-                    $skipped++;
-                    $tempIdsToMark[] = $r->id;
-
-                    continue;
-                }
-
-                // No match -> create new voter
-                // Guard: don't attempt to create a voter if required fields are missing
-                if (empty($r->sijil_number)) {
-                    $tempIdsToMark[] = $r->id;
-                    $skipped++;
-
-                    continue;
-                }
-
-                if (! $dryRun) {
-                    $v = Voter::create([
-                        'first_name' => $r->first_name,
-                        'family_name' => $r->family_name,
-                        'father_name' => $r->father_name ?? null,
-                        'mother_full_name' => $r->mother_full_name ?? null,
-                        'date_of_birth' => $r->date_of_birth,
-                        'sijil_number' => $r->sijil_number ?? null,
-                        'sijil_additional_string' => $r->sijil_additional_string ?? null,
-                        'gender_id' => $r->gender_id ?? null,
-                        'sect_id' => $r->sect_id ?? null,
-                        'personal_sect' => $r->personal_sect ?? null,
-                        'town_id' => $r->town_id,
-                    ]);
-                } else {
-                    // in dry run, just skip creating
-                }
-
-                $tempIdsToMark[] = $r->id;
-                $inserted++;
-            }
-            // update processed counter and emit progress (per-row path, throttled)
-            $processedCount += count($rows);
-            $now = microtime(true);
-            if ($now - $lastBroadcast >= $broadcastThrottle || $processedCount >= $totalToProcess) {
-                try {
-                    $percent = ($totalToProcess && $totalToProcess > 0) ? (int) floor(($processedCount / $totalToProcess) * 100) : null;
-                    event(new VoterUploadProgress($this->upload, ['processed' => $processedCount, 'total' => $totalToProcess, 'percent' => $percent, 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped]));
-                    $lastBroadcast = $now;
-                } catch (\Throwable $e) {
-                    Log::debug('Progress broadcast failed during merge', ['exception' => $e->getMessage()]);
-                }
-            }
-        });
 
         // Save a simple report back into upload meta
         $report = [
