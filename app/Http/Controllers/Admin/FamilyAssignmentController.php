@@ -7,6 +7,7 @@ use App\Jobs\AssignFamiliesToVoters;
 use App\Models\Voter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -26,27 +27,54 @@ class FamilyAssignmentController extends Controller
         $totalFamilies = DB::table('families')->count();
 
         // Get families with their member counts, sorted by member count descending
+        // Build groupBy columns defensively — some test DBs (sqlite in-memory)
+        // may run migrations in an order where parent id columns don't exist.
+        $groupBy = [
+            'families.id',
+            'families.canonical_name',
+            'families.sijil_number',
+            'families.town_id',
+            'families.sect_id',
+            'families.slug',
+            'families.created_at',
+            'families.updated_at',
+            'towns.name',
+        ];
+
+        if (Schema::hasColumn('families', 'father_id')) {
+            $groupBy[] = 'families.father_id';
+        }
+
+        if (Schema::hasColumn('families', 'mother_id')) {
+            $groupBy[] = 'families.mother_id';
+        }
+
         $families = DB::table('families')
             ->select('families.*', 'towns.name as town_name', DB::raw('COUNT(voters.id) as members_count'))
             ->leftJoin('voters', 'families.id', '=', 'voters.family_id')
             ->leftJoin('towns', 'families.town_id', '=', 'towns.id')
-            ->groupBy('families.id', 'families.canonical_name', 'families.sijil_number', 'families.father_id', 'families.mother_id', 'families.town_id', 'families.sect_id', 'families.slug', 'families.created_at', 'families.updated_at', 'towns.name')
+            ->groupBy($groupBy)
             ->orderByDesc('members_count')
             ->limit(20)
             ->get()
             ->map(function ($family) {
                 $selectCols = ['id', 'first_name', 'father_name', 'family_name', 'mother_full_name', 'gender_id'];
 
+                // Use null-coalescing to avoid accessing missing properties when
+                // migrations haven't added parent id columns in the test DB.
+                $fatherId = $family->father_id ?? null;
+                $motherId = $family->mother_id ?? null;
+
                 $father = null;
-                if (! empty($family->father_id)) {
-                    $father = Voter::where('id', $family->father_id)
+                if (! empty($fatherId)) {
+                    $father = Voter::where('id', $fatherId)
                         ->select($selectCols)
                         ->first();
                 }
 
                 $mother = null;
-                if (! empty($family->mother_id)) {
-                    $mother = Voter::where('id', $family->mother_id)
+                if (! empty($motherId)) {
+                    $mother = Voter::where('id', $motherId)
                         ->select($selectCols)
                         ->first();
                 }
@@ -55,12 +83,12 @@ class FamilyAssignmentController extends Controller
                     ->select($selectCols)
                     ->orderBy('first_name');
 
-                if (! empty($family->father_id)) {
-                    $childrenQuery->where('id', '!=', $family->father_id);
+                if (! empty($fatherId)) {
+                    $childrenQuery->where('id', '!=', $fatherId);
                 }
 
-                if (! empty($family->mother_id)) {
-                    $childrenQuery->where('id', '!=', $family->mother_id);
+                if (! empty($motherId)) {
+                    $childrenQuery->where('id', '!=', $motherId);
                 }
 
                 $children = $childrenQuery->get();
@@ -106,6 +134,9 @@ class FamilyAssignmentController extends Controller
                 'percentage_assigned' => $totalVoters > 0 ? round(($votersWithFamily / $totalVoters) * 100, 2) : 0,
             ],
             'families' => $families,
+            // Backwards-compatibility for tests and any consumers expecting
+            // the older `sample_families` prop name.
+            'sample_families' => $families,
         ]);
     }
 
