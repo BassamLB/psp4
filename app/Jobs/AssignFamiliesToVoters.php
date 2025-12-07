@@ -10,12 +10,11 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Collection;
 
 /**
  * Assigns family_id to voters based on canonical_name + town_id only.
  * Optimized for 1M+ records with incremental updates.
- *
- * Note: sijil_number is NOT used for grouping as multiple unrelated voters can share the same sijil.
  *
  * Usage:
  * - After initial import: AssignFamiliesToVoters::dispatch();
@@ -26,13 +25,16 @@ class AssignFamiliesToVoters implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 3600; // 1 hour timeout for large datasets
-
+    public $timeout = 3600;
     public $tries = 3;
 
-    /**
-     * @param  array<string, mixed>  $options
-     */
+    // Cache for normalized names to avoid repeated processing
+    private array $nameCache = [];
+    
+    // Batch size constants
+    private const FAMILY_CHUNK_SIZE = 500;
+    private const VOTER_CHUNK_SIZE = 1000;
+
     public function __construct(public array $options = [])
     {
         $this->onQueue('imports');
@@ -43,11 +45,7 @@ class AssignFamiliesToVoters implements ShouldQueue
         $startTime = microtime(true);
         Log::info('AssignFamiliesToVoters: Starting', $this->options);
 
-        // Ensure families table exists
-        $this->ensureFamiliesTableExists();
-
-        // Ensure voters.family_id column exists
-        $this->ensureFamilyIdColumn();
+        $this->ensureDatabaseStructure();
 
         // Step 1: Create/update families from voters
         $this->createOrUpdateFamilies();
@@ -55,88 +53,116 @@ class AssignFamiliesToVoters implements ShouldQueue
         // Step 2: Assign family_id to voters
         $assignedCount = $this->assignFamilyIds();
 
-        // Step 3: Report conflicts if any
-        $this->reportConflicts();
-
         $elapsed = microtime(true) - $startTime;
         Log::info('AssignFamiliesToVoters: Completed', [
             'assigned_count' => $assignedCount,
             'elapsed_seconds' => round($elapsed, 2),
+            'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
         ]);
     }
 
-    protected function ensureFamiliesTableExists(): void
+    protected function ensureDatabaseStructure(): void
     {
-        if (Schema::hasTable('families')) {
-            return;
+        if (!Schema::hasTable('families')) {
+            Log::info('Creating families table');
+            Schema::create('families', function ($table) {
+                $table->bigIncrements('id');
+                $table->string('canonical_name', 255);
+                $table->integer('town_id')->nullable();
+                $table->string('sijil_number', 100)->nullable();
+                $table->unsignedBigInteger('father_id')->nullable();
+                $table->unsignedBigInteger('mother_id')->nullable();
+                $table->string('slug', 255)->nullable();
+                $table->timestamps();
+
+                $table->unique(['canonical_name', 'town_id', 'sijil_number'], 'families_unique_key');
+                $table->index(['town_id', 'sijil_number'], 'families_household_idx');
+            });
         }
 
-        Log::info('Creating families table');
-        Schema::create('families', function ($table) {
-            $table->bigIncrements('id');
-            $table->string('canonical_name', 255)->index();
-            $table->integer('town_id')->nullable();
-            $table->string('slug', 255)->nullable();
-            $table->timestamps();
+        if (!Schema::hasColumn('voters', 'family_id')) {
+            Log::info('Adding family_id column to voters table');
+            Schema::table('voters', function ($table) {
+                $table->unsignedBigInteger('family_id')->nullable()->after('id');
+                $table->index('family_id');
+            });
+        }
 
-            // Composite unique index for lookups (family name + town only)
-            $table->unique(['canonical_name', 'town_id'], 'families_unique_key');
-        });
+        // Ensure critical indexes exist
+        if (!Schema::hasColumn('voters', 'town_id') || 
+            !$this->hasIndex('voters', 'voters_town_sijil_idx')) {
+            Schema::table('voters', function ($table) {
+                $table->index(['town_id', 'sijil_number'], 'voters_town_sijil_idx');
+            });
+        }
     }
 
-    protected function ensureFamilyIdColumn(): void
+    protected function hasIndex(string $table, string $indexName): bool
     {
-        if (Schema::hasColumn('voters', 'family_id')) {
-            return;
-        }
-
-        Log::info('Adding family_id column to voters table');
-        Schema::table('voters', function ($table) {
-            $table->unsignedBigInteger('family_id')->nullable()->after('id')->index();
-        });
+        $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
+        return !empty($indexes);
     }
 
     protected function createOrUpdateFamilies(): void
     {
-        Log::info('Creating/updating families from voters using parent-child matching');
+        Log::info('Creating/updating families from voters');
 
-        // Get all household groups (same town_id + sijil_number)
-        $households = $this->buildVotersQuery()
+        $totalProcessed = 0;
+        $totalFamilies = 0;
+
+        // Process households in chunks to manage memory
+        $this->buildVotersQuery()
             ->select('town_id', 'sijil_number')
             ->whereNotNull('town_id')
             ->whereNotNull('sijil_number')
             ->distinct()
-            ->get();
+            ->orderBy('town_id')
+            ->orderBy('sijil_number')
+            ->chunk(100, function ($households) use (&$totalProcessed, &$totalFamilies) {
+                $familyData = $this->processBatchOfHouseholds($households, $totalProcessed);
+                
+                if (!empty($familyData)) {
+                    $this->bulkInsertFamilies($familyData);
+                    $totalFamilies += count($familyData);
+                }
+            });
 
-        Log::info('Found distinct households', ['count' => $households->count()]);
+        Log::info('Families created/updated', [
+            'total_families' => $totalFamilies,
+            'total_voters_processed' => $totalProcessed,
+        ]);
+    }
 
+    protected function processBatchOfHouseholds(Collection $households, int &$totalProcessed): array
+    {
+        // Fetch all voters for these households in one query
+        $votersByHousehold = $this->fetchVotersForHouseholds($households);
+        
         $familyData = [];
-        $unmatchedVoters = [];
-        $totalProcessed = 0;
 
         foreach ($households as $household) {
-            // Get all voters in this household
-            $voters = $this->buildVotersQuery()
-                ->where('town_id', $household->town_id)
-                ->where('sijil_number', $household->sijil_number)
-                ->get();
+            $key = "{$household->town_id}_{$household->sijil_number}";
+            $voters = $votersByHousehold->get($key, collect());
+            
+            if ($voters->isEmpty()) {
+                continue;
+            }
 
             $totalProcessed += $voters->count();
 
-            // Try to identify families within this household
+            // Identify families within this household
             $families = $this->identifyFamiliesInHousehold($voters);
 
             foreach ($families as $family) {
-                // Prepare family record
                 $canonical = $this->normalizeName($family['family_name']);
                 if ($canonical === '') {
                     continue;
                 }
 
-                $key = $this->makeKey($canonical, $household->town_id, $household->sijil_number);
+                $familyKey = $this->makeKey($canonical, $household->town_id, $household->sijil_number);
 
-                if (! isset($familyData[$key])) {
-                    $familyData[$key] = [
+                if (!isset($familyData[$familyKey])) {
+                    $familyData[$familyKey] = [
                         'canonical_name' => $canonical,
                         'town_id' => $household->town_id,
                         'sijil_number' => $household->sijil_number,
@@ -147,61 +173,41 @@ class AssignFamiliesToVoters implements ShouldQueue
                     ];
                 }
             }
-
-            // Track voters that couldn't be matched to a family
-            foreach ($voters as $voter) {
-                $matched = false;
-                foreach ($families as $family) {
-                    if (in_array($voter->id, $family['member_ids'])) {
-                        $matched = true;
-                        break;
-                    }
-                }
-                if (! $matched) {
-                    $unmatchedVoters[] = $voter->id;
-                }
-            }
         }
 
-        Log::info('Identified families', [
-            'total_families' => count($familyData),
-            'total_voters_processed' => $totalProcessed,
-            'unmatched_voters' => count($unmatchedVoters),
-        ]);
-
-        // Bulk insert families
-        if (! empty($familyData)) {
-            $chunkSize = 500;
-            $inserted = 0;
-            foreach (array_chunk($familyData, $chunkSize) as $chunk) {
-                try {
-                    DB::table('families')->insertOrIgnore($chunk);
-                    $inserted += count($chunk);
-                } catch (\Throwable $e) {
-                    Log::warning('Family insert chunk failed', [
-                        'error' => $e->getMessage(),
-                        'chunk_size' => count($chunk),
-                    ]);
-                }
-            }
-
-            Log::info('Families created/updated', ['inserted' => $inserted]);
-        }
+        return $familyData;
     }
 
-    /**
-     * Identify family units within a household based on parent-child relationships
-     */
-    protected function identifyFamiliesInHousehold($voters): array
+    protected function fetchVotersForHouseholds(Collection $households): Collection
+    {
+        $conditions = [];
+        $bindings = [];
+
+        foreach ($households as $household) {
+            $conditions[] = '(town_id = ? AND sijil_number = ?)';
+            $bindings[] = $household->town_id;
+            $bindings[] = $household->sijil_number;
+        }
+
+        $whereSql = implode(' OR ', $conditions);
+
+        return DB::table('voters')
+            ->whereRaw("({$whereSql})", $bindings)
+            ->get()
+            ->groupBy(fn($v) => "{$v->town_id}_{$v->sijil_number}");
+    }
+
+    protected function identifyFamiliesInHousehold(Collection $voters): array
     {
         $families = [];
         $assignedVoterIds = [];
 
-        // Separate by gender and sort by birth date
-        // gender_id=1 is male, gender_id=2 is female
+        // Pre-normalize all names once
+        $voterData = $this->preprocessVoterData($voters);
+
+        // Separate by gender and sort by age
         $males = $voters->where('gender_id', 1)->sortBy('date_of_birth')->values();
         $females = $voters->where('gender_id', 2)->sortBy('date_of_birth')->values();
-        $others = $voters->whereNotIn('gender_id', [1, 2])->values();
 
         // Try to identify parent pairs and their children
         foreach ($males as $potentialFather) {
@@ -209,279 +215,293 @@ class AssignFamiliesToVoters implements ShouldQueue
                 continue;
             }
 
-            // Look for a mother with matching full name in children's mother_full_name
-            $potentialMother = null;
-            foreach ($females as $female) {
-                if (in_array($female->id, $assignedVoterIds)) {
-                    continue;
-                }
-
-                // Check if this female is referenced as mother by any children
-                $childrenReferencingThisMother = $voters->filter(function ($voter) use ($female, $potentialFather) {
-                    if (empty($voter->mother_full_name) || empty($voter->father_name)) {
-                        return false;
-                    }
-
-                    // Normalize names for comparison
-                    $voterMotherName = $this->normalizeName($voter->mother_full_name);
-                    $femaleFullName = $this->normalizeName($this->getFullName($female));
-                    $voterFatherName = $this->normalizeName($voter->father_name);
-                    $maleName = $this->normalizeName($potentialFather->first_name);
-
-                    return $voterMotherName === $femaleFullName && $voterFatherName === $maleName;
-                });
-
-                if ($childrenReferencingThisMother->count() > 0) {
-                    $potentialMother = $female;
-                    break;
-                }
-            }
-
-            // Find children matching this father (and mother if found)
-            $children = $voters->filter(function ($voter) use ($potentialFather, $potentialMother, $assignedVoterIds) {
-                // Skip if already assigned
-                if (in_array($voter->id, $assignedVoterIds)) {
-                    return false;
-                }
-
-                // Skip the parents themselves
-                if ($voter->id === $potentialFather->id || ($potentialMother && $voter->id === $potentialMother->id)) {
-                    return false;
-                }
-
-                // Check if father_name matches
-                if (empty($voter->father_name)) {
-                    return false;
-                }
-
-                $voterFatherName = $this->normalizeName($voter->father_name);
-                $fatherName = $this->normalizeName($potentialFather->first_name);
-
-                if ($voterFatherName !== $fatherName) {
-                    return false;
-                }
-
-                // If we have a mother, also check mother_full_name
-                if ($potentialMother && ! empty($voter->mother_full_name)) {
-                    $voterMotherName = $this->normalizeName($voter->mother_full_name);
-                    $motherFullName = $this->normalizeName($this->getFullName($potentialMother));
-
-                    if ($voterMotherName !== $motherFullName) {
-                        return false;
-                    }
-                }
-
-                // Validate age difference (parents should be older)
-                if (! empty($voter->date_of_birth) && ! empty($potentialFather->date_of_birth)) {
-                    try {
-                        $childBirthDate = \Carbon\Carbon::parse($voter->date_of_birth);
-                        $fatherBirthDate = \Carbon\Carbon::parse($potentialFather->date_of_birth);
-
-                        // Father should be at least 15 years older than child
-                        if ($fatherBirthDate->diffInYears($childBirthDate) < 15) {
-                            return false;
-                        }
-                    } catch (\Exception $e) {
-                        // Skip validation if dates are invalid
-                    }
-                }
-
-                if ($potentialMother && ! empty($voter->date_of_birth) && ! empty($potentialMother->date_of_birth)) {
-                    try {
-                        $childBirthDate = \Carbon\Carbon::parse($voter->date_of_birth);
-                        $motherBirthDate = \Carbon\Carbon::parse($potentialMother->date_of_birth);
-
-                        // Mother should be at least 15 years older than child
-                        if ($motherBirthDate->diffInYears($childBirthDate) < 15) {
-                            return false;
-                        }
-                    } catch (\Exception $e) {
-                        // Skip validation if dates are invalid
-                    }
-                }
-
-                return true;
-            });
-
-            // If we found at least one child (or just the parent pair), create a family
-            if ($children->count() > 0 || $potentialMother) {
-                $memberIds = [$potentialFather->id];
-                $assignedVoterIds[] = $potentialFather->id;
-
-                if ($potentialMother) {
-                    $memberIds[] = $potentialMother->id;
-                    $assignedVoterIds[] = $potentialMother->id;
-                }
-
-                foreach ($children as $child) {
-                    $memberIds[] = $child->id;
-                    $assignedVoterIds[] = $child->id;
-                }
-
-                $families[] = [
-                    'family_name' => $potentialFather->family_name,
-                    'father_id' => $potentialFather->id,
-                    'mother_id' => $potentialMother ? $potentialMother->id : null,
-                    'member_ids' => $memberIds,
-                ];
+            $family = $this->buildFamily($potentialFather, $females, $voters, $voterData, $assignedVoterIds);
+            
+            if ($family) {
+                $families[] = $family;
             }
         }
 
         return $families;
     }
 
-    protected function assignFamilyIds(): int
+    protected function preprocessVoterData(Collection $voters): array
     {
-        Log::info('Assigning family_id to voters based on family membership');
+        $data = [];
+        foreach ($voters as $voter) {
+            $data[$voter->id] = [
+                'voter' => $voter,
+                'father_name_norm' => $this->normalizeName($voter->father_name ?? ''),
+                'mother_name_norm' => $this->normalizeName($voter->mother_full_name ?? ''),
+                'first_name_norm' => $this->normalizeName($voter->first_name ?? ''),
+                'family_name_norm' => $this->normalizeName($voter->family_name ?? ''),
+                'full_name_norm' => $this->normalizeName($this->getFullName($voter)),
+            ];
+        }
+        return $data;
+    }
 
-        $totalAssigned = 0;
+    protected function buildFamily($potentialFather, Collection $females, Collection $voters, array $voterData, array &$assignedVoterIds): ?array
+    {
+        $fatherData = $voterData[$potentialFather->id];
+        $fatherFirstNameNorm = $fatherData['first_name_norm'];
+        $fatherFamilyNameNorm = $fatherData['family_name_norm'];
 
-        // Get all families
-        $families = DB::table('families')
-            ->whereNotNull('father_id')
-            ->orWhereNotNull('mother_id')
-            ->get();
+        // Find matching children
+        $matchingChildren = $this->findMatchingChildren($voters, $voterData, $fatherFirstNameNorm, $fatherFamilyNameNorm, $assignedVoterIds);
 
-        Log::info('Found families to assign', ['count' => $families->count()]);
+        if (empty($matchingChildren)) {
+            return null;
+        }
 
-        foreach ($families as $family) {
-            // Get all voters in this household
-            $voters = DB::table('voters')
-                ->where('town_id', $family->town_id)
-                ->where('sijil_number', $family->sijil_number)
-                ->get();
+        // Find mother
+        $potentialMother = $this->findMother($females, $voterData, $matchingChildren, $assignedVoterIds);
 
-            // Collect voter IDs for this family
-            $voterIds = [];
+        // Filter children by mother if found
+        if ($potentialMother) {
+            $motherFullNameNorm = $voterData[$potentialMother->id]['full_name_norm'];
+            $matchingChildren = $this->filterChildrenByMother($matchingChildren, $motherFullNameNorm);
+        }
 
-            // Add father
-            if ($family->father_id) {
-                $voterIds[] = $family->father_id;
+        // Build family structure
+        $memberIds = [$potentialFather->id];
+        $assignedVoterIds[] = $potentialFather->id;
+
+        if ($potentialMother) {
+            $memberIds[] = $potentialMother->id;
+            $assignedVoterIds[] = $potentialMother->id;
+        }
+
+        foreach ($matchingChildren as $childInfo) {
+            $memberIds[] = $childInfo['voter']->id;
+            $assignedVoterIds[] = $childInfo['voter']->id;
+        }
+
+        return [
+            'family_name' => $potentialFather->family_name,
+            'father_id' => $potentialFather->id,
+            'mother_id' => $potentialMother?->id,
+            'member_ids' => $memberIds,
+        ];
+    }
+
+    protected function findMatchingChildren(Collection $voters, array $voterData, string $fatherFirstNameNorm, string $fatherFamilyNameNorm, array $assignedVoterIds): array
+    {
+        $matchingChildren = [];
+
+        foreach ($voters as $voter) {
+            if (in_array($voter->id, $assignedVoterIds)) {
+                continue;
             }
 
-            // Add mother
-            if ($family->mother_id) {
-                $voterIds[] = $family->mother_id;
-            }
+            $childData = $voterData[$voter->id];
 
-            // Get father and mother names for matching
-            $father = $voters->firstWhere('id', $family->father_id);
-            $mother = $voters->firstWhere('id', $family->mother_id);
-
-            if ($father) {
-                $fatherName = $this->normalizeName($father->first_name);
-                $motherFullName = $mother ? $this->normalizeName($this->getFullName($mother)) : null;
-
-                // Find children matching this father (and mother if present)
-                foreach ($voters as $voter) {
-                    // Skip if already added (father/mother) or no father_name
-                    if (in_array($voter->id, $voterIds) || empty($voter->father_name)) {
-                        continue;
-                    }
-
-                    // Check if father_name matches
-                    $voterFatherName = $this->normalizeName($voter->father_name);
-                    if ($voterFatherName !== $fatherName) {
-                        continue;
-                    }
-
-                    // If we have a mother, also check mother_full_name
-                    if ($motherFullName && ! empty($voter->mother_full_name)) {
-                        $voterMotherName = $this->normalizeName($voter->mother_full_name);
-                        if ($voterMotherName !== $motherFullName) {
-                            continue;
-                        }
-                    }
-
-                    // This voter is a child of this family
-                    $voterIds[] = $voter->id;
-                }
-            }
-
-            // Update all voters in this family
-            if (! empty($voterIds)) {
-                DB::table('voters')
-                    ->whereIn('id', $voterIds)
-                    ->update(['family_id' => $family->id]);
-
-                $totalAssigned += count($voterIds);
+            // Must match family_name and father's first_name
+            if ($childData['family_name_norm'] === $fatherFamilyNameNorm &&
+                $childData['father_name_norm'] === $fatherFirstNameNorm) {
+                $matchingChildren[] = ['voter' => $voter, 'data' => $childData];
             }
         }
 
-        Log::info('Family assignment completed', ['total_assigned' => $totalAssigned]);
+        return $matchingChildren;
+    }
+
+    protected function findMother(Collection $females, array $voterData, array $matchingChildren, array $assignedVoterIds): mixed
+    {
+        foreach ($females as $female) {
+            if (in_array($female->id, $assignedVoterIds)) {
+                continue;
+            }
+
+            $femaleFullNameNorm = $voterData[$female->id]['full_name_norm'];
+
+            // Check if any child references this female as mother
+            $referencingChildren = array_filter($matchingChildren, 
+                fn($childInfo) => $childInfo['data']['mother_name_norm'] === $femaleFullNameNorm
+            );
+
+            if (!empty($referencingChildren)) {
+                return $female;
+            }
+        }
+
+        return null;
+    }
+
+    protected function filterChildrenByMother(array $matchingChildren, string $motherFullNameNorm): array
+    {
+        return array_filter($matchingChildren, function ($childInfo) use ($motherFullNameNorm) {
+            $childMotherNorm = $childInfo['data']['mother_name_norm'];
+            return $childMotherNorm === '' || $childMotherNorm === $motherFullNameNorm;
+        });
+    }
+
+    protected function bulkInsertFamilies(array $familyData): void
+    {
+        foreach (array_chunk($familyData, self::FAMILY_CHUNK_SIZE) as $chunk) {
+            try {
+                DB::table('families')->insertOrIgnore($chunk);
+            } catch (\Throwable $e) {
+                Log::warning('Family insert chunk failed', [
+                    'error' => $e->getMessage(),
+                    'chunk_size' => count($chunk),
+                ]);
+            }
+        }
+    }
+
+    protected function assignFamilyIds(): int
+    {
+        Log::info('Assigning family_id to voters');
+
+        // First, assign parents directly (very fast single query)
+        $parentsAssigned = $this->assignParentsToFamilies();
+        
+        // Then assign children in optimized chunks
+        $childrenAssigned = $this->assignChildrenToFamilies();
+
+        $totalAssigned = $parentsAssigned + $childrenAssigned;
+
+        Log::info('Family assignment completed', [
+            'parents_assigned' => $parentsAssigned,
+            'children_assigned' => $childrenAssigned,
+            'total_assigned' => $totalAssigned,
+        ]);
 
         return $totalAssigned;
     }
 
-    protected function fetchFamiliesForKeys(array $uniqueKeys): array
+    protected function assignParentsToFamilies(): int
     {
-        if (empty($uniqueKeys)) {
-            return [];
-        }
+        $sql = '
+            UPDATE voters v
+            INNER JOIN families f ON (v.id = f.father_id OR v.id = f.mother_id)
+            SET v.family_id = f.id
+            WHERE v.family_id IS NULL
+        ';
+        
+        return DB::affectingStatement($sql);
+    }
 
-        // Build optimized query to fetch all matching families at once
-        $query = DB::table('families')->where(function ($q) use ($uniqueKeys) {
-            foreach ($uniqueKeys as $key => $parts) {
-                $q->orWhere(function ($subQ) use ($parts) {
-                    $subQ->where('canonical_name', $parts['canonical'])
-                        ->where('town_id', $parts['town_id'] ?? null);
-                });
-            }
-        });
+    protected function assignChildrenToFamilies(): int
+    {
+        $totalAssigned = 0;
 
-        $families = $query->get(['id', 'canonical_name', 'town_id']);
+        DB::table('families')
+            ->whereNotNull('father_id')
+            ->orderBy('id')
+            ->chunk(self::FAMILY_CHUNK_SIZE, function ($families) use (&$totalAssigned) {
+                $assigned = $this->processChunkOfFamilies($families);
+                $totalAssigned += $assigned;
+            });
 
-        // Map families by key
-        $familyMap = [];
+        return $totalAssigned;
+    }
+
+    protected function processChunkOfFamilies(Collection $families): int
+    {
+        // Pre-load all relevant data
+        $households = $this->extractHouseholdsFromFamilies($families);
+        $voters = $this->fetchVotersForHouseholds($households);
+        $fathers = $this->fetchParents($families->pluck('father_id')->filter());
+        $mothers = $this->fetchParents($families->pluck('mother_id')->filter());
+
+        $totalAssigned = 0;
+
         foreach ($families as $family) {
-            $key = $this->makeKey(
-                $family->canonical_name,
-                $family->town_id
-            );
-            $familyMap[$key] = $family->id;
+            $father = $fathers->get($family->father_id);
+            if (!$father) {
+                continue;
+            }
+
+            $assigned = $this->assignVotersToFamily($family, $father, $mothers->get($family->mother_id), $voters);
+            $totalAssigned += $assigned;
         }
 
-        return $familyMap;
+        return $totalAssigned;
     }
 
-    protected function bulkUpdateFamilyIds(array $cases, array $ids): void
+    protected function extractHouseholdsFromFamilies(Collection $families): Collection
     {
-        // Build CASE statement
-        $casesSql = '';
-        foreach ($cases as $voterId => $familyId) {
-            $casesSql .= "WHEN {$voterId} THEN {$familyId} ";
+        return $families->map(fn($f) => (object)[
+            'town_id' => $f->town_id,
+            'sijil_number' => $f->sijil_number,
+        ])->unique(fn($h) => "{$h->town_id}_{$h->sijil_number}");
+    }
+
+    protected function fetchParents(Collection $ids): Collection
+    {
+        if ($ids->isEmpty()) {
+            return collect();
         }
 
-        $idsList = implode(',', array_map('intval', $ids));
-        $sql = "UPDATE voters SET family_id = CASE id {$casesSql} END WHERE id IN ({$idsList})";
-
-        DB::statement($sql);
+        return DB::table('voters')
+            ->whereIn('id', $ids->unique())
+            ->get()
+            ->keyBy('id');
     }
 
-    protected function reportConflicts(): void
+    protected function assignVotersToFamily($family, $father, $mother, Collection $votersByHousehold): int
     {
-        // No longer checking for sijil_number conflicts since families are grouped by name+town only
-        Log::info('Conflict reporting skipped (families grouped by name+town only)');
+        $fatherFirstNorm = $this->normalizeName($father->first_name);
+        $fatherFamilyNorm = $this->normalizeName($father->family_name);
+        $motherFullNorm = $mother ? $this->normalizeName($this->getFullName($mother)) : null;
+
+        $key = "{$family->town_id}_{$family->sijil_number}";
+        $householdVoters = $votersByHousehold->get($key, collect())->whereNull('family_id');
+
+        $voterIdsToAssign = [];
+
+        foreach ($householdVoters as $voter) {
+            if ($this->isVoterInFamily($voter, $fatherFirstNorm, $fatherFamilyNorm, $motherFullNorm)) {
+                $voterIdsToAssign[] = $voter->id;
+            }
+        }
+
+        if (!empty($voterIdsToAssign)) {
+            DB::table('voters')
+                ->whereIn('id', $voterIdsToAssign)
+                ->update(['family_id' => $family->id]);
+        }
+
+        return count($voterIdsToAssign);
+    }
+
+    protected function isVoterInFamily($voter, string $fatherFirstNorm, string $fatherFamilyNorm, ?string $motherFullNorm): bool
+    {
+        // Must match family_name
+        if ($this->normalizeName($voter->family_name) !== $fatherFamilyNorm) {
+            return false;
+        }
+
+        // Must match father first name
+        if ($this->normalizeName($voter->father_name) !== $fatherFirstNorm) {
+            return false;
+        }
+
+        // If mother exists and voter has mother name, must match
+        if ($motherFullNorm && !empty($voter->mother_full_name)) {
+            if ($this->normalizeName($voter->mother_full_name) !== $motherFullNorm) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected function buildVotersQuery()
     {
         $query = DB::table('voters');
 
-        // Filter by specific voter IDs if provided
-        if (! empty($this->options['voter_ids'])) {
+        if (!empty($this->options['voter_ids'])) {
             $query->whereIn('id', $this->options['voter_ids']);
         }
 
-        // Filter by upload batch if provided
-        if (! empty($this->options['upload_id'])) {
-            // You may need to add a voters.upload_id column or use a join
-            // For now, this is a placeholder
+        if (!empty($this->options['upload_id'])) {
             Log::info('Filtering by upload_id not yet implemented', ['upload_id' => $this->options['upload_id']]);
         }
 
-        // Only process voters without family_id if incremental mode
-        if (! empty($this->options['incremental'])) {
+        if (!empty($this->options['incremental'])) {
             $query->whereNull('family_id');
         }
 
@@ -489,6 +509,23 @@ class AssignFamiliesToVoters implements ShouldQueue
     }
 
     protected function normalizeName(string $name): string
+    {
+        // Use cache to avoid repeated normalization
+        if (isset($this->nameCache[$name])) {
+            return $this->nameCache[$name];
+        }
+
+        $normalized = $this->performNormalization($name);
+        
+        // Limit cache size to prevent memory issues
+        if (count($this->nameCache) < 10000) {
+            $this->nameCache[$name] = $normalized;
+        }
+
+        return $normalized;
+    }
+
+    protected function performNormalization(string $name): string
     {
         $name = trim($name);
         if ($name === '') {
@@ -504,7 +541,7 @@ class AssignFamiliesToVoters implements ShouldQueue
         // Normalize Arabic alef variants
         $name = str_replace(['أ', 'إ', 'آ'], 'ا', $name);
 
-        // Remove diacritics (harakat)
+        // Remove diacritics
         $name = preg_replace('/[\x{0610}-\x{061A}\x{064B}-\x{065F}\x{06D6}-\x{06ED}]/u', '', $name);
 
         // Remove punctuation
@@ -516,25 +553,17 @@ class AssignFamiliesToVoters implements ShouldQueue
         return trim($name);
     }
 
-    /**
-     * Get full name from voter object
-     */
     protected function getFullName($voter): string
     {
         if (empty($voter->first_name)) {
             return '';
         }
 
-        $parts = [$voter->first_name];
-        if (! empty($voter->family_name)) {
-            $parts[] = $voter->family_name;
-        }
-
-        return implode(' ', $parts);
+        return trim(($voter->first_name ?? '') . ' ' . ($voter->family_name ?? ''));
     }
 
-    protected function makeKey($canonical, $townId, $sijilNumber = null): string
+    protected function makeKey(string $canonical, ?int $townId, ?string $sijilNumber = null): string
     {
-        return $canonical.'|'.($townId ?? 'null').'|'.($sijilNumber ?? 'null');
+        return $canonical . '|' . ($townId ?? 'null') . '|' . ($sijilNumber ?? 'null');
     }
 }

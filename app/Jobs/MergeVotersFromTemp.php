@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\VoterUploadCleaned;
+use App\Events\VoterUploadImported;
 use App\Events\VoterUploadProgress;
 use App\Models\ImportBatch;
 use App\Models\VoterImportTemp;
@@ -161,6 +162,7 @@ class MergeVotersFromTemp implements ShouldQueue
         // Broadcast event that import finished so admin UI updates in real-time
         try {
             event(new VoterUploadCleaned($this->upload));
+            event(new VoterUploadImported($this->upload));
         } catch (\Throwable $e) {
             Log::warning('Failed to broadcast VoterUploadCleaned after merge', ['upload_id' => $this->upload->id, 'exception' => $e->getMessage()]);
         }
@@ -189,10 +191,6 @@ class MergeVotersFromTemp implements ShouldQueue
                 // Dispatch soft delete job (applies deletes, not dry run)
                 Log::info('MergeVotersFromTemp: dispatching SoftDeleteMissingVoters', ['batch_id' => $batch->id]);
                 SoftDeleteMissingVoters::dispatch($batch, ['dry_run' => false])->onQueue('imports');
-
-                // Dispatch assign families job
-                Log::info('MergeVotersFromTemp: dispatching AssignFamiliesToVoters');
-                AssignFamiliesToVoters::dispatch([])->onQueue('imports');
             } catch (\Throwable $e) {
                 Log::error('Failed to chain post-merge jobs', ['upload_id' => $this->upload->id, 'exception' => $e->getMessage()]);
             }

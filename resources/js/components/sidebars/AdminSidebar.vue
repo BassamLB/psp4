@@ -21,7 +21,7 @@ import CollapsibleTrigger from '@/components/ui/collapsible/CollapsibleTrigger.v
 import AppLogo from '@/components/AppLogo.vue';
 import NavUser from '@/components/NavUser.vue';
 import { computed } from 'vue';
-import { Download, Settings } from 'lucide-vue-next';
+import { Download, Settings, Users as UsersIcon } from 'lucide-vue-next';
 
 const side = computed(() => (typeof document !== 'undefined' && document.documentElement?.dir === 'rtl' ? 'right' : 'left'));
 
@@ -137,6 +137,14 @@ const side = computed(() => (typeof document !== 'undefined' && document.documen
                                 <Link href="/admin/import-voters">
                                     <Download class="size-4 mr-2 inline group-data-[collapsible=icon]:mr-0" />
                                     <span class="group-data-[collapsible=icon]:hidden">استيراد الناخبين</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton as-child>
+                                <Link href="/admin/family-assignment">
+                                    <UsersIcon class="size-4 mr-2 inline group-data-[collapsible=icon]:mr-0" />
+                                    <span class="group-data-[collapsible=icon]:hidden">تعيين العائلات</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

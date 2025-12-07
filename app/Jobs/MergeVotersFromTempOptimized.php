@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\VoterUploadCleaned;
+use App\Events\VoterUploadImported;
 use App\Events\VoterUploadProgress;
 use App\Models\ImportBatch;
 use App\Models\VoterImportTemp;
@@ -128,6 +129,7 @@ class MergeVotersFromTempOptimized implements ShouldQueue
 
         try {
             event(new VoterUploadCleaned($this->upload));
+            event(new VoterUploadImported($this->upload));
         } catch (\Throwable $e) {
             // ignore
         }
@@ -154,9 +156,6 @@ class MergeVotersFromTempOptimized implements ShouldQueue
 
                 Log::info('MergeVotersFromTempOptimized: dispatching SoftDeleteMissingVoters');
                 SoftDeleteMissingVoters::dispatch($batch, ['dry_run' => false])->onQueue('imports');
-
-                Log::info('MergeVotersFromTempOptimized: dispatching AssignFamiliesToVoters');
-                AssignFamiliesToVoters::dispatch([])->onQueue('imports');
             } catch (\Throwable $e) {
                 Log::error('Failed to chain post-merge jobs', ['exception' => $e->getMessage()]);
             }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Voter extends Model
@@ -13,4 +14,9 @@ class Voter extends Model
     protected $table = 'voters';
 
     protected $guarded = [];
+
+    public function town(): BelongsTo
+    {
+        return $this->belongsTo(Town::class);
+    }
 }

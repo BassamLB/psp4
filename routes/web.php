@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ExtraPollingStationController;
+use App\Http\Controllers\Admin\FamilyAssignmentController;
 use App\Http\Controllers\Admin\ImportVotersController;
 use App\Http\Controllers\Admin\LocalPollingStationController;
 use App\Http\Controllers\Admin\OrgGraphController;
@@ -88,6 +89,12 @@ Route::middleware(['auth', 'verified', 'user.allowed'])->group(function () {
         // Import batch review and soft-delete actions
         Route::get('import-batches/{batch}', [ImportVotersController::class, 'showImportBatch'])->name('import-batches.show');
         Route::post('import-batches/{batch}/soft-delete', [ImportVotersController::class, 'softDelete'])->name('import-batches.soft_delete');
+
+        // Family Assignment
+        Route::get('family-assignment', [FamilyAssignmentController::class, 'index'])->name('family-assignment.index');
+        Route::post('family-assignment/assign', [FamilyAssignmentController::class, 'assign'])->name('family-assignment.assign');
+        Route::post('family-assignment/assign-all', [FamilyAssignmentController::class, 'assignAll'])->name('family-assignment.assign-all');
+
         // Organization Graph
         Route::get('org-graph', [OrgGraphController::class, 'index'])->name('org-graph.index');
         Route::post('branch/{branch}/towns', [OrgGraphController::class, 'attachTown'])->name('branch.towns.attach');
