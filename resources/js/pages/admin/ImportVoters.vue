@@ -459,18 +459,6 @@ onMounted(() => {
         upsertUpload(payload);
       });
 
-      // Progress updates for long imports
-      echoChannel.listen('.VoterUploadProgress', (payload: any) => {
-        try {
-          // merge progress into upload meta so UI can render progress bar
-          const upd = { id: payload.id, meta: Object.assign({}, (uploads.value.find(u => String(u.id) === String(payload.id)) || {}).meta || {}, { progress: payload }) };
-          upsertUpload(upd);
-          // also show short notice
-          notice.value = `Upload #${payload.id} progress: ${payload.percent ?? payload.processed ?? ''}`;
-          setTimeout(() => { notice.value = null; }, 4000);
-        } catch {}
-      });
-
       return true;
     } catch {
       // retry

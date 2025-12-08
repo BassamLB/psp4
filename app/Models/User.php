@@ -118,6 +118,11 @@ class User extends Authenticatable
         return $this->role?->name === 'مدير';
     }
 
+    public function isDataEditor(): bool
+    {
+        return $this->role?->name === 'معدل معلومات';
+    }
+
     public function isApproved(): bool
     {
         return $this->is_allowed && ! $this->is_blocked;

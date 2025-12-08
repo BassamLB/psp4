@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,10 +24,23 @@ class DashboardController extends Controller
             return $this->boxDashboard($user);
         }
 
+        if ($user->isDataEditor()) {
+            if (Route::has('data-editor.dashboard')) {
+                // Use a direct path to avoid static analyzer complaints about missing named routes.
+                return redirect()->to('/data-editor');
+            }
+
+            Log::warning('data-editor.dashboard route not found; falling back to main dashboard', [
+                'user_id' => $user->id,
+            ]);
+
+            return redirect()->route('dashboard');
+        }
+
         return $this->userDashboard($user);
     }
 
-    private function adminDashboard(\App\Models\User $user): Response
+    private function adminDashboard(): Response
     {
         // Get pending approval users count
         $pendingUsers = \App\Models\User::where('is_allowed', false)
@@ -44,7 +59,7 @@ class DashboardController extends Controller
 
     private function boxDashboard(\App\Models\User $user): Response|RedirectResponse
     {
-        \Illuminate\Support\Facades\Log::info('boxDashboard called', [
+        Log::info('boxDashboard called', [
             'user_id' => $user->id,
             'user_email' => $user->email,
         ]);
@@ -59,7 +74,7 @@ class DashboardController extends Controller
 
         // If user has no active assignment, show error message
         if (! $assignment) {
-            \Illuminate\Support\Facades\Log::warning('No active assignment found for box user', [
+            Log::warning('No active assignment found for box user', [
                 'user_id' => $user->id,
             ]);
 
@@ -69,7 +84,7 @@ class DashboardController extends Controller
             ]);
         }
 
-        \Illuminate\Support\Facades\Log::info('Redirecting to ballot entry', [
+        Log::info('Redirecting to ballot entry', [
             'user_id' => $user->id,
             'station_id' => $assignment->polling_station_id,
         ]);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureDataEditor;
 use App\Http\Middleware\EnsureUserIsAllowed;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'user.allowed' => EnsureUserIsAllowed::class,
+            'data-editor' => EnsureDataEditor::class,
             'admin' => function ($request, $next) {
                 if (! $request->user()?->isAdmin()) {
                     abort(403, '\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0644\u0643 \u0628\u0627\u0644\u0648\u0635\u0648\u0644.');

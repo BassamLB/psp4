@@ -13,7 +13,13 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         $roles = [
-            ['name' => 'مدير'], ['name' => 'وكيل داخلية'], ['name' => 'معتمد'], ['name' => 'مدير فرع'], ['name' => 'مندوب استقبال'], ['name' => 'مندوب صندوق'],
+            ['name' => 'مدير'],
+            ['name' => 'وكيل داخلية'],
+            ['name' => 'معتمد'],
+            ['name' => 'مدير فرع'],
+            ['name' => 'مندوب استقبال'],
+            ['name' => 'مندوب صندوق'],
+            ['name' => 'معدل معلومات'],
         ];
         // upsert by unique 'name' column to avoid duplicates
         Role::upsert($roles, ['name']);

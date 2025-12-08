@@ -30,6 +30,8 @@ class UpdateUserRequest extends FormRequest
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', 'exists:roles,id'],
             'mobile_number' => ['nullable', 'string', 'max:20'],
+            'region_ids' => ['nullable', 'array'],
+            'region_ids.*' => ['integer', 'exists:towns,id'],
             'is_active' => ['boolean'],
             'is_allowed' => ['boolean'],
             'is_blocked' => ['boolean'],

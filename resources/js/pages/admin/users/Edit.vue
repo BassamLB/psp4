@@ -12,12 +12,28 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { ChevronDown } from 'lucide-vue-next';
 import InputError from '@/components/InputError.vue';
 
 interface Role {
     id: number;
     name: string;
+}
+
+interface Town {
+    id: number;
+    name: string;
+    district: string;
 }
 
 interface User {
@@ -26,6 +42,7 @@ interface User {
     email: string;
     mobile_number: string | null;
     role_id: number | null;
+    region_ids: number[] | null;
     is_active: boolean;
     is_allowed: boolean;
     is_blocked: boolean;
@@ -35,6 +52,7 @@ interface User {
 const props = defineProps<{
     user: User;
     roles: Role[];
+    towns: Town[];
 }>();
 
 const form = useForm({
@@ -44,6 +62,7 @@ const form = useForm({
     password_confirmation: '',
     role_id: props.user.role_id?.toString() || '',
     mobile_number: props.user.mobile_number || '',
+    region_ids: props.user.region_ids ? [...props.user.region_ids] : [] as number[],
     is_active: props.user.is_active,
     is_allowed: props.user.is_allowed,
     is_blocked: props.user.is_blocked,
@@ -129,6 +148,53 @@ const submit = () => {
                                 </SelectContent>
                             </Select>
                             <InputError :message="form.errors.role_id" />
+                        </div>
+
+                        <!-- Regions -->
+                        <div class="space-y-2">
+                            <Label>المناطق المسموحة (اختياري)</Label>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" class="w-full justify-between">
+                                        <span>
+                                            {{ form.region_ids.length > 0 
+                                                ? `تم اختيار ${form.region_ids.length} منطقة` 
+                                                : 'اختر المناطق' 
+                                            }}
+                                        </span>
+                                        <ChevronDown class="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent class="w-full max-h-60 overflow-y-auto">
+                                    <DropdownMenuLabel>اختر المناطق</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem
+                                        v-for="town in towns"
+                                        :key="town.id"
+                                        :checked="form.region_ids.includes(town.id)"
+                                        @click="() => {
+                                            if (form.region_ids.includes(town.id)) {
+                                                form.region_ids = form.region_ids.filter(id => id !== town.id);
+                                            } else {
+                                                form.region_ids.push(town.id);
+                                            }
+                                        }"
+                                    >
+                                        {{ town.name }} - {{ town.district }}
+                                    </DropdownMenuCheckboxItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <div v-if="form.region_ids.length > 0" class="flex flex-wrap gap-1">
+                                <Badge
+                                    v-for="regionId in form.region_ids"
+                                    :key="regionId"
+                                    variant="secondary"
+                                    class="text-xs"
+                                >
+                                    {{ towns.find(t => t.id === regionId)?.name }}
+                                </Badge>
+                            </div>
+                            <InputError :message="form.errors.region_ids" />
                         </div>
 
                         <!-- Password (Optional) -->

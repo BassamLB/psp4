@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\Role;
+use App\Models\Town;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,12 +46,21 @@ class UserController extends Controller
     {
         return Inertia::render('admin/users/Create', [
             'roles' => Role::all(),
+            'towns' => Town::with('district')->orderBy('name')->get()->map(function ($town) {
+                return [
+                    'id' => $town->id,
+                    'name' => $town->name,
+                    'district' => $town->district?->name ?? 'غير محدد',
+                ];
+            }),
         ]);
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        User::create($request->validated());
+        $data = $request->validated();
+
+        User::create($data);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'تم إنشاء المستخدم بنجاح.');
@@ -60,12 +71,21 @@ class UserController extends Controller
         return Inertia::render('admin/users/Edit', [
             'user' => $user->load('role'),
             'roles' => Role::all(),
+            'towns' => Town::with('district')->orderBy('name')->get()->map(function ($town) {
+                return [
+                    'id' => $town->id,
+                    'name' => $town->name,
+                    'district' => $town->district?->name ?? 'غير محدد',
+                ];
+            }),
         ]);
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        $user->update($request->validated());
+        $data = $request->validated();
+
+        $user->update($data);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'تم تحديث المستخدم بنجاح.');
@@ -74,7 +94,7 @@ class UserController extends Controller
     public function destroy(User $user): RedirectResponse
     {
         // Prevent deleting own account
-        if ($user->id === auth()->id()) {
+        if ($user->id === Auth::id()) {
             return back()->with('error', 'لا يمكنك حذف حسابك الخاص.');
         }
 

@@ -11,7 +11,11 @@ return new class extends Migration
         Schema::create('families', function (Blueprint $table) {
             $table->id();
             $table->string('canonical_name', 255)->index();
-            $table->unsignedBigInteger('sijil_number')->nullable()->index();
+            $table->unsignedInteger('sijil_number')->nullable()->index();
+            $table->unsignedBigInteger('father_id')->nullable();
+            $table->unsignedBigInteger('mother_id')->nullable();
+            $table->foreign('father_id')->references('id')->on('voters')->onDelete('set null');
+            $table->foreign('mother_id')->references('id')->on('voters')->onDelete('set null');
             $table->integer('town_id')->nullable();
             $table->integer('sect_id')->nullable();
             $table->string('slug', 255)->nullable();
@@ -19,6 +23,7 @@ return new class extends Migration
 
             // Composite Indexes
             $table->index(['sijil_number', 'town_id']);
+            $table->index(['father_id', 'mother_id']);
         });
     }
 

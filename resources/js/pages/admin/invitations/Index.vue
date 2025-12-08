@@ -86,11 +86,11 @@ defineProps<{
                                     </TableCell>
                                     <TableCell>
                                         <code class="rounded bg-muted px-2 py-1 text-xs">
-                                            {{ invitation.registration_code.substring(0, 12) }}...
+                                            {{ invitation.registration_code.substring(0, 12) }}
                                         </code>
                                     </TableCell>
                                     <TableCell>
-                                        {{ new Date(invitation.created_at).toLocaleDateString('ar-SA') }}
+                                        {{ new Date(invitation.created_at).toLocaleDateString('ar-LB') }}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">معلق</Badge>

@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Events\VoterUploadProgress;
 use App\Models\VoterImportTemp;
 use App\Models\VoterUpload;
 use Illuminate\Bus\Queueable;
@@ -17,113 +16,198 @@ class ImportVotersToTempTable implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 3600; // 1 hour
+    public int $timeout = 3600;
 
-    public $tries = 3;
+    public int $tries = 3;
 
-    public $maxExceptions = 3;
+    public int $maxExceptions = 3;
 
-    /**
-     * @param  array<string, mixed>  $options
-     */
+    private const STORAGE_DIR = 'private/imports';
+
+    private const DEFAULT_BATCH_SIZE = 1000;
+
+    private const MAX_INSERT_CHUNK = 1000;
+
+    private const MIN_INSERT_CHUNK = 250;
+
+    private const MAX_CHUNK_METERS = 20;
+
+    private const MEMORY_LOG_INTERVAL = 25000;
+
+    private const PROGRESS_LOG_INTERVAL = 50000;
+
+    private const METER_SAVE_INTERVAL = 10;
+
     public function __construct(public VoterUpload $upload, public array $options = [])
     {
         $this->onQueue('imports');
+        $this->onConnection('redis');
     }
 
     public function handle(): void
+    {
+        Log::info('ImportVotersToTempTable: Starting', [
+            'upload_id' => $this->upload->id,
+            'options' => $this->options,
+        ]);
+
+        try {
+            $inputPath = $this->resolveInputPath();
+
+            if (! $inputPath) {
+                $this->handleInputNotFound();
+
+                return;
+            }
+
+            $this->updateStatus('importing-temp');
+            $this->prepareTempTable();
+
+            $failedRowsFile = $this->initializeFailedRowsFile($inputPath);
+            $result = $this->processImport($inputPath, $failedRowsFile);
+
+            $this->handleImportResult($result, $failedRowsFile);
+        } catch (\Throwable $e) {
+            $this->handleFailure($e);
+        }
+    }
+
+    /**
+     * Resolve input file path from upload meta
+     */
+    protected function resolveInputPath(): ?string
     {
         $meta = $this->upload->meta ?? [];
         $cleaned = $meta['cleaned_path'] ?? null;
 
         if (! $cleaned) {
-            Log::error('ImportVotersToTempTable: cleaned_path not found in upload meta', ['upload_id' => $this->upload->id]);
-            $this->upload->status = 'error';
-            $this->upload->meta = array_merge($meta, ['import_error' => 'cleaned_path_missing']);
-            $this->upload->save();
+            Log::error('ImportVotersToTempTable: cleaned_path not found in upload meta', [
+                'upload_id' => $this->upload->id,
+            ]);
 
-            return;
+            return null;
         }
 
-        // Resolve the cleaned CSV path deterministically under storage/app/private/imports
         $filename = basename(preg_replace('#^app/#', '', $cleaned));
-        $full = storage_path('app/private/imports/'.$filename);
+        $fullPath = storage_path('app/' . self::STORAGE_DIR . '/' . $filename);
 
-        if (! is_readable($full)) {
-            Log::error('ImportVotersToTempTable: cleaned file not readable', ['path' => $full]);
-            $this->upload->status = 'error';
-            $this->upload->meta = array_merge($meta, ['import_error' => 'cleaned_unreadable', 'cleaned_candidate' => $full]);
-            $this->upload->save();
+        if (! is_readable($fullPath)) {
+            Log::error('ImportVotersToTempTable: cleaned file not readable', [
+                'path' => $fullPath,
+                'upload_id' => $this->upload->id,
+            ]);
 
-            return;
+            return null;
         }
 
-        // Create failed rows CSV file
-        $failedRowsFile = storage_path('app/private/imports/'.pathinfo($filename, PATHINFO_FILENAME).'_failed_rows.csv');
-        $failedRowsFh = fopen($failedRowsFile, 'w');
-        $failedRowsHeader = ['row_number', 'error', 'sijil_number', 'town_id', 'first_name', 'family_name', 'father_name', 'mother_full_name', 'gender_id', 'sect_id', 'personal_sect', 'date_of_birth'];
-        fputcsv($failedRowsFh, $failedRowsHeader);
+        Log::info('ImportVotersToTempTable: Input file resolved', [
+            'path' => $fullPath,
+            'upload_id' => $this->upload->id,
+        ]);
 
-        // Check if voter_imports_temp has data and truncate if not empty
+        return $fullPath;
+    }
+
+    /**
+     * Handle case when input file is not found
+     */
+    protected function handleInputNotFound(): void
+    {
+        $meta = $this->upload->meta ?? [];
+
+        $this->upload->status = 'error';
+        $this->upload->meta = array_merge($meta, [
+            'import_error' => 'cleaned_path_missing_or_unreadable',
+            'timestamp' => now()->toIso8601String(),
+        ]);
+        $this->upload->save();
+    }
+
+    /**
+     * Update upload status
+     */
+    protected function updateStatus(string $status): void
+    {
+        $this->upload->status = $status;
+        $this->upload->save();
+    }
+
+    /**
+     * Prepare temp table by truncating if needed
+     */
+    protected function prepareTempTable(): void
+    {
         $tempCount = DB::table('voter_imports_temp')->count();
+
         if ($tempCount > 0) {
-            Log::info('ImportVotersToTempTable: Truncating voter_imports_temp table', ['existing_rows' => $tempCount, 'upload_id' => $this->upload->id]);
+            Log::info('ImportVotersToTempTable: Truncating voter_imports_temp table', [
+                'existing_rows' => $tempCount,
+                'upload_id' => $this->upload->id,
+            ]);
+
             try {
                 DB::table('voter_imports_temp')->truncate();
             } catch (\Throwable $e) {
-                Log::error('ImportVotersToTempTable: Failed to truncate voter_imports_temp', ['exception' => $e->getMessage()]);
-                $this->upload->status = 'error';
-                $this->upload->meta = array_merge($meta, ['import_error' => 'truncate_failed', 'truncate_exception' => $e->getMessage()]);
-                $this->upload->save();
-
-                return;
+                Log::error('ImportVotersToTempTable: Failed to truncate voter_imports_temp', [
+                    'exception' => $e->getMessage(),
+                    'upload_id' => $this->upload->id,
+                ]);
+                throw new \Exception('Failed to prepare temp table: ' . $e->getMessage());
             }
         }
+    }
 
-        // mark importing
-        $this->upload->status = 'importing-temp';
-        $this->upload->save();
+    /**
+     * Initialize failed rows CSV file
+     */
+    protected function initializeFailedRowsFile(string $inputPath): string
+    {
+        $filename = basename($inputPath);
+        $failedRowsFile = storage_path('app/' . self::STORAGE_DIR . '/' . pathinfo($filename, PATHINFO_FILENAME) . '_failed_rows.csv');
 
-        // Broadcast initial progress
-        try {
-            event(new VoterUploadProgress($this->upload, ['inserted' => 0, 'percent' => 0, 'phase' => 'starting']));
-        } catch (\Throwable $e) {
-            Log::debug('Initial progress broadcast failed', ['exception' => $e->getMessage()]);
+        $failedRowsFh = fopen($failedRowsFile, 'w');
+        if (! $failedRowsFh) {
+            throw new \Exception("Could not create failed rows file: {$failedRowsFile}");
         }
 
-        $batch = (int) ($this->options['batch'] ?? 1000);
-        // How many rows to insert in a single bulk insert. Keep reasonable to avoid
-        // excessive memory use; 1000 is a good default for medium-sized CSVs.
-        $insertChunk = max(250, min(5000, $batch));
+        $failedRowsHeader = [
+            'row_number',
+            'error',
+            'sijil_number',
+            'town_id',
+            'first_name',
+            'family_name',
+            'father_name',
+            'mother_full_name',
+            'gender_id',
+            'sect_id',
+            'personal_sect',
+            'date_of_birth',
+        ];
 
-        // timing meters
+        fputcsv($failedRowsFh, $failedRowsHeader);
+        fclose($failedRowsFh);
+
+        return $failedRowsFile;
+    }
+
+    /**
+     * Process the CSV import
+     */
+    protected function processImport(string $inputPath, string $failedRowsFile): array
+    {
         $startTime = microtime(true);
         $chunkMeters = [];
         $lastMeterSave = $startTime;
-        $maxChunkMeters = 100; // Limit array size to prevent memory issues
-        $now = now(); // Reuse timestamp for all rows in this run
 
-        $fh = new \SplFileObject($full, 'r');
+        $batchSize = (int) ($this->options['batch'] ?? self::DEFAULT_BATCH_SIZE);
+        $insertChunk = max(self::MIN_INSERT_CHUNK, min(self::MAX_INSERT_CHUNK, $batchSize));
+
+        $this->logMemoryUsage('Starting import');
+
+        $now = now();
+        $fh = new \SplFileObject($inputPath, 'r');
         $fh->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);
-
-        // Estimate total rows more efficiently
-        $totalLines = null;
-        try {
-            $fileSize = filesize($full);
-            if ($fileSize !== false && $fileSize > 0) {
-                // Sample first 1000 bytes to estimate average line length
-                $sample = file_get_contents($full, false, null, 0, min(1000, $fileSize));
-                if ($sample !== false) {
-                    $sampleLines = substr_count($sample, "\n");
-                    if ($sampleLines > 0) {
-                        $avgLineLength = strlen($sample) / $sampleLines;
-                        $totalLines = (int) ($fileSize / $avgLineLength);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            $totalLines = null;
-        }
 
         $header = null;
         $rowsInserted = 0;
@@ -197,20 +281,24 @@ class ImportVotersToTempTable implements ShouldQueue
                             $failedRows++;
 
                             // Write failed row to CSV file
-                            fputcsv($failedRowsFh, [
-                                $rowsProcessed - $chunkCount + $failedRows, // approximate row number
-                                $insertError->getMessage(),
-                                $rowData['sijil_number'] ?? '',
-                                $rowData['town_id'] ?? '',
-                                $rowData['first_name'] ?? '',
-                                $rowData['family_name'] ?? '',
-                                $rowData['father_name'] ?? '',
-                                $rowData['mother_full_name'] ?? '',
-                                $rowData['gender_id'] ?? '',
-                                $rowData['sect_id'] ?? '',
-                                $rowData['personal_sect'] ?? '',
-                                $rowData['date_of_birth'] ?? '',
-                            ]);
+                            $failedRowsFh = fopen($failedRowsFile, 'a');
+                            if ($failedRowsFh) {
+                                fputcsv($failedRowsFh, [
+                                    $rowsProcessed - $chunkCount + $failedRows, // approximate row number
+                                    $insertError->getMessage(),
+                                    $rowData['sijil_number'] ?? '',
+                                    $rowData['town_id'] ?? '',
+                                    $rowData['first_name'] ?? '',
+                                    $rowData['family_name'] ?? '',
+                                    $rowData['father_name'] ?? '',
+                                    $rowData['mother_full_name'] ?? '',
+                                    $rowData['gender_id'] ?? '',
+                                    $rowData['sect_id'] ?? '',
+                                    $rowData['personal_sect'] ?? '',
+                                    $rowData['date_of_birth'] ?? '',
+                                ]);
+                                fclose($failedRowsFh);
+                            }
 
                             Log::error('Individual row insert failed', [
                                 'error' => $insertError->getMessage(),
@@ -235,9 +323,20 @@ class ImportVotersToTempTable implements ShouldQueue
                 $rowsInserted += $actualInserted;
                 $insertBuffer = [];
 
+                // Clear memory and log usage periodically
+                if ($rowsInserted % 25000 === 0) {
+                    gc_collect_cycles();
+                    Log::info('ImportVotersToTempTable: Memory check', [
+                        'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                        'peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+                        'rows_inserted' => $rowsInserted,
+                        'upload_id' => $this->upload->id,
+                    ]);
+                }
+
                 // record meter for this chunk (limit array size)
                 $rps = $chunkDuration > 0 ? round($chunkCount / $chunkDuration, 2) : null;
-                if (count($chunkMeters) < $maxChunkMeters) {
+                if (count($chunkMeters) < self::MAX_CHUNK_METERS) {
                     $chunkMeters[] = ['rows' => $chunkCount, 'seconds' => round($chunkDuration, 3), 'rps' => $rps];
                 } else {
                     // Keep only the most recent metrics by removing oldest
@@ -261,17 +360,6 @@ class ImportVotersToTempTable implements ShouldQueue
                         // ignore
                     }
                     $lastMeterSave = microtime(true);
-                }
-            }
-
-            // allow other jobs to run occasionally and emit progress periodically
-            if (($rowsProcessed % 1000) === 0) {
-                try {
-                    $totalRows = $totalLines ? max(0, $totalLines - 1) : null;
-                    $percent = ($totalRows && $totalRows > 0) ? min(99, (int) floor(($rowsProcessed / $totalRows) * 100)) : null;
-                    event(new VoterUploadProgress($this->upload, ['inserted' => $rowsInserted, 'processed' => $rowsProcessed, 'total' => $totalRows, 'percent' => $percent, 'phase' => 'importing']));
-                } catch (\Throwable $e) {
-                    Log::debug('Progress broadcast failed during import temp', ['exception' => $e->getMessage()]);
                 }
             }
         }
@@ -301,20 +389,24 @@ class ImportVotersToTempTable implements ShouldQueue
                         $failedRows++;
 
                         // Write failed row to CSV file
-                        fputcsv($failedRowsFh, [
-                            $rowsProcessed - $chunkCount + $failedRows, // approximate row number
-                            $insertError->getMessage(),
-                            $rowData['sijil_number'] ?? '',
-                            $rowData['town_id'] ?? '',
-                            $rowData['first_name'] ?? '',
-                            $rowData['family_name'] ?? '',
-                            $rowData['father_name'] ?? '',
-                            $rowData['mother_full_name'] ?? '',
-                            $rowData['gender_id'] ?? '',
-                            $rowData['sect_id'] ?? '',
-                            $rowData['personal_sect'] ?? '',
-                            $rowData['date_of_birth'] ?? '',
-                        ]);
+                        $failedRowsFh = fopen($failedRowsFile, 'a');
+                        if ($failedRowsFh) {
+                            fputcsv($failedRowsFh, [
+                                $rowsProcessed - $chunkCount + $failedRows, // approximate row number
+                                $insertError->getMessage(),
+                                $rowData['sijil_number'] ?? '',
+                                $rowData['town_id'] ?? '',
+                                $rowData['first_name'] ?? '',
+                                $rowData['family_name'] ?? '',
+                                $rowData['father_name'] ?? '',
+                                $rowData['mother_full_name'] ?? '',
+                                $rowData['gender_id'] ?? '',
+                                $rowData['sect_id'] ?? '',
+                                $rowData['personal_sect'] ?? '',
+                                $rowData['date_of_birth'] ?? '',
+                            ]);
+                            fclose($failedRowsFh);
+                        }
 
                         Log::error('Individual row insert failed in final chunk', [
                             'error' => $insertError->getMessage(),
@@ -338,7 +430,7 @@ class ImportVotersToTempTable implements ShouldQueue
             $rowsInserted += $actualInserted;
             $chunkDuration = microtime(true) - $chunkStart;
             $rps = $chunkDuration > 0 ? round($actualInserted / $chunkDuration, 2) : null;
-            if (count($chunkMeters) < $maxChunkMeters) {
+            if (count($chunkMeters) < self::MAX_CHUNK_METERS) {
                 $chunkMeters[] = ['rows' => $chunkCount, 'seconds' => round($chunkDuration, 3), 'rps' => $rps];
             } else {
                 array_shift($chunkMeters);
@@ -353,9 +445,6 @@ class ImportVotersToTempTable implements ShouldQueue
 
         // Get actual count from database to verify
         $actualDbCount = DB::table('voter_imports_temp')->count();
-
-        // Close failed rows file
-        fclose($failedRowsFh);
 
         // Count failed rows by reading the CSV (excluding header)
         $failedRowsCount = 0;
@@ -388,32 +477,164 @@ class ImportVotersToTempTable implements ShouldQueue
             // ignore
         }
 
-        // Update upload meta with temp count (merge with current meta so we don't clobber import_metrics)
-        $metaUpdates = ['temp_rows' => $actualDbCount];
-        if ($failedRowsFile && $failedRowsCount > 0) {
-            $metaUpdates['failed_rows_file'] = 'private/imports/'.basename($failedRowsFile);
-            $metaUpdates['failed_rows_count'] = $failedRowsCount;
+        return [
+            'rows_processed' => $rowsProcessed,
+            'rows_inserted' => $rowsInserted,
+            'rows_in_db' => $actualDbCount,
+            'failed_rows_count' => $failedRowsCount,
+            'elapsed_seconds' => round($totalElapsed, 2),
+            'avg_rps' => $avgRps,
+            'chunk_metrics' => $chunkMeters,
+        ];
+    }
+
+    /**
+     * Log memory usage with context
+     */
+    protected function logMemoryUsage(string $context): void
+    {
+        Log::info("ImportVotersToTempTable: {$context}", [
+            'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+            'peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+            'upload_id' => $this->upload->id,
+        ]);
+
+        // Trigger garbage collection to free memory
+        gc_collect_cycles();
+    }
+
+    /**
+     * Handle import result and finalize upload
+     */
+    protected function handleImportResult(array $result, string $failedRowsFile): void
+    {
+        $this->logMemoryUsage('Import completed');
+
+        Log::info('ImportVotersToTempTable: Completed', array_merge($result, [
+            'upload_id' => $this->upload->id,
+        ]));
+
+        // Clean up failed rows file if empty
+        $failedRowsPath = null;
+        if ($result['failed_rows_count'] > 0 && file_exists($failedRowsFile)) {
+            $failedRowsPath = 'private/imports/' . basename($failedRowsFile);
+        } elseif (file_exists($failedRowsFile)) {
+            unlink($failedRowsFile);
         }
+
+        // Update upload meta with results
+        $metaUpdates = [
+            'temp_rows' => $result['rows_in_db'],
+            'import_metrics' => [
+                'chunks' => $result['chunk_metrics'],
+                'inserted' => $result['rows_inserted'],
+                'elapsed' => $result['elapsed_seconds'],
+                'avg_rps' => $result['avg_rps'],
+            ],
+        ];
+
+        if ($failedRowsPath && $result['failed_rows_count'] > 0) {
+            $metaUpdates['failed_rows_file'] = $failedRowsPath;
+            $metaUpdates['failed_rows_count'] = $result['failed_rows_count'];
+        }
+
         $this->upload->meta = array_merge($this->upload->meta ?? [], $metaUpdates);
         $this->upload->status = 'temp_imported';
         $this->upload->save();
 
-        // Broadcast final progress and dispatch merge job
+        $this->chainNextJob();
+    }
+
+    /**
+     * Chain next job in the pipeline
+     */
+    protected function chainNextJob(): void
+    {
         try {
-            $totalRows = $totalLines ? max(0, $totalLines - 1) : null;
-            event(new VoterUploadProgress($this->upload, [
-                'inserted' => $rowsInserted,
-                'processed' => $rowsProcessed,
-                'total' => $totalRows,
-                'percent' => 100,
-                'phase' => 'temp_imported',
-                'message' => 'Imported to temporary table, starting merge',
-            ]));
+            Log::info('ImportVotersToTempTable: About to dispatch merge job', [
+                'upload_id' => $this->upload->id,
+            ]);
+
+            MergeVotersFromTempOptimized::dispatch($this->upload, $this->options)
+                ->onConnection('redis')  // Explicitly set connection
+                ->onQueue('imports');
+
+            Log::info('ImportVotersToTempTable: Merge job dispatched successfully', [
+                'upload_id' => $this->upload->id,
+            ]);
         } catch (\Throwable $e) {
-            Log::debug('Failed to broadcast temp import completion', ['upload_id' => $this->upload->id, 'exception' => $e->getMessage()]);
+            Log::error('ImportVotersToTempTable: Failed to chain next job', [
+                'upload_id' => $this->upload->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Handle job failure
+     */
+    protected function handleFailure(\Throwable $e): void
+    {
+        Log::error('ImportVotersToTempTable: Job failed', [
+            'upload_id' => $this->upload->id,
+            'exception' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        try {
+            $this->upload->status = 'import_failed';
+            $this->upload->meta = array_merge($this->upload->meta ?? [], [
+                'error' => 'import_exception',
+                'exception_message' => $e->getMessage(),
+                'exception_type' => get_class($e),
+                'failed_at' => now()->toIso8601String(),
+            ]);
+            $this->upload->save();
+        } catch (\Throwable $savingError) {
+            Log::error('ImportVotersToTempTable: Failed to save error state', [
+                'upload_id' => $this->upload->id,
+                'error' => $savingError->getMessage(),
+            ]);
         }
 
-        // Dispatch optimized merge job (chained) — merge will respect dry_run option
-        MergeVotersFromTempOptimized::dispatch($this->upload, $this->options)->onQueue('imports');
+        throw $e;
+    }
+
+    /**
+     * Handle permanently failed job
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ImportVotersToTempTable: Job failed permanently', [
+            'upload_id' => $this->upload->id,
+            'exception' => $exception->getMessage(),
+            'attempts' => $this->attempts(),
+        ]);
+
+        try {
+            $this->upload->status = 'import_failed';
+            $this->upload->meta = array_merge($this->upload->meta ?? [], [
+                'error' => 'job_failed_permanently',
+                'exception' => $exception->getMessage(),
+                'attempts' => $this->attempts(),
+            ]);
+            $this->upload->save();
+        } catch (\Throwable $e) {
+            Log::error('ImportVotersToTempTable: Failed to handle job failure', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get job tags for monitoring
+     */
+    public function tags(): array
+    {
+        return [
+            'importing',
+            'upload:' . $this->upload->id,
+        ];
     }
 }

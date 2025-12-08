@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Events\VoterUploadCleaned;
 use App\Events\VoterUploadImported;
-use App\Events\VoterUploadProgress;
 use App\Models\ImportBatch;
 use App\Models\VoterImportTemp;
 use App\Models\VoterUpload;
@@ -45,17 +44,6 @@ class MergeVotersFromTemp implements ShouldQueue
             ]);
             $this->upload->save();
 
-            // Broadcast completion
-            try {
-                event(new VoterUploadProgress($this->upload, [
-                    'percent' => 100,
-                    'phase' => 'completed',
-                    'message' => 'Import completed (no data to merge)',
-                ]));
-            } catch (\Throwable $e) {
-                Log::debug('Failed to broadcast completion', ['exception' => $e->getMessage()]);
-            }
-
             return;
         }
 
@@ -70,17 +58,6 @@ class MergeVotersFromTemp implements ShouldQueue
             'temp_rows' => $tempCount,
             'dry_run' => $dryRun,
         ]);
-
-        try {
-            // Broadcast initial progress
-            event(new VoterUploadProgress($this->upload, [
-                'percent' => 0,
-                'phase' => 'merging',
-                'message' => 'Starting merge process',
-            ]));
-        } catch (\Throwable $e) {
-            Log::debug('Failed to broadcast start', ['exception' => $e->getMessage()]);
-        }
 
         $inserted = 0;
         $updated = 0;
@@ -134,19 +111,7 @@ class MergeVotersFromTemp implements ShouldQueue
             }
         }
 
-        // Broadcast completion progress
-        try {
-            event(new VoterUploadProgress($this->upload, [
-                'percent' => 90,
-                'phase' => 'merge_completed',
-                'message' => 'Merge completed, finalizing',
-                'inserted' => $inserted,
-            ]));
-        } catch (\Throwable $e) {
-            Log::debug('Failed to broadcast merge completion', ['exception' => $e->getMessage()]);
-        }
-
-        // Save a simple report back into upload meta
+        $endTime = microtime(true);
         $report = [
             'inserted' => $inserted,
             'updated' => $updated,

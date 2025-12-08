@@ -23,8 +23,13 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
 
     public int $maxExceptions = 2;
 
-    /** @var int[] */
     public array $backoff = [10, 30, 60];
+
+    private const LOCK_TTL_BUFFER = 5;
+
+    private const LOCK_WAIT_SECONDS = 5;
+
+    private const CACHE_TTL_MINUTES = 5;
 
     public function __construct(public int $pollingStationId)
     {
@@ -33,83 +38,107 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
-        $lockKey = "aggregate:station:{$this->pollingStationId}";
+        $lock = $this->acquireLock();
 
-        // Acquire a redis-backed lock to prevent concurrent aggregations for the same station.
-        // Use a TTL slightly longer than the job timeout to avoid the lock expiring while processing.
-        $lockSeconds = $this->timeout + 5;
-        // @var \Illuminate\Contracts\Cache\Lock $lock
-        $lock = Cache::lock($lockKey, $lockSeconds);
+        if (! $lock) {
+            $this->handleLockFailure();
 
-        // Try to acquire the lock, waiting up to 5 seconds.
-        if (! $lock->block(5)) {
-            Log::info('Aggregation already in progress for station ts='.now()->format('Y-m-d H:i:s.u'), [
-                'station_id' => $this->pollingStationId,
-            ]);
-
-            // Release this job back onto the queue with a short delay so it retries shortly.
-            // Use InteractsWithQueue::release to preserve job metadata and attempt counting.
-            try {
-                $this->release(3);
-            } catch (\Throwable $e) {
-                // If release() isn't available in the current runtime, fall back to re-dispatching.
-                try {
-                    self::dispatch($this->pollingStationId)->delay(now()->addSeconds(3))->onQueue('aggregation');
-                } catch (\Throwable $_) {
-                    Log::warning('Failed to reschedule aggregation job', ['station_id' => $this->pollingStationId, 'error' => $_->getMessage()]);
-                }
-            }
-
-            return; // Exit current run; job will retry
+            return;
         }
 
         try {
-            Log::info('Starting aggregation for station ts='.now()->format('Y-m-d H:i:s.u'), [
-                'station_id' => $this->pollingStationId,
-            ]);
-
-            // Perform read-heavy aggregation queries outside the transaction to keep the
-            // transaction window short. We compute aggregates first, then persist them in
-            // a short transaction.
-            $listCounts = $this->getListCounts();
-            $candidateCounts = $this->getCandidateCounts();
-            $summaryCounts = $this->getSummaryCounts();
-
-            DB::transaction(function () use ($listCounts, $candidateCounts, $summaryCounts) {
-                $this->persistAggregates($listCounts, $candidateCounts);
-                $this->updateStationSummary($summaryCounts);
-            });
-
-            // Update cache and broadcast after transaction commits
-            $this->updateCache();
-
-            Log::info('Broadcasting results update for station ts='.now()->format('Y-m-d H:i:s.u'), [
-                'station_id' => $this->pollingStationId,
-            ]);
-            broadcast(new StationResultsUpdated($this->pollingStationId));
-
-            Log::info('Aggregation completed successfully for station ts='.now()->format('Y-m-d H:i:s.u'), [
-                'station_id' => $this->pollingStationId,
-            ]);
+            $this->performAggregation();
         } catch (\Exception $e) {
-            Log::error('Failed to aggregate station results ts='.now()->format('Y-m-d H:i:s.u'), [
-                'station_id' => $this->pollingStationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $this->handleAggregationFailure($e);
             throw $e;
         } finally {
-            // Release the redis lock. If the lock has already expired, release() will
-            // silently fail — that's acceptable here.
-            try {
-                $lock->release();
-            } catch (\Throwable $releaseException) {
-                Log::warning('Failed to release aggregation lock', [
-                    'station_id' => $this->pollingStationId,
-                    'error' => $releaseException->getMessage(),
-                ]);
-            }
+            $this->releaseLock($lock);
         }
+    }
+
+    protected function acquireLock()
+    {
+        $lockKey = "aggregate:station:{$this->pollingStationId}";
+        $lockSeconds = $this->timeout + self::LOCK_TTL_BUFFER;
+        $lock = Cache::lock($lockKey, $lockSeconds);
+
+        return $lock->block(self::LOCK_WAIT_SECONDS) ? $lock : null;
+    }
+
+    protected function handleLockFailure(): void
+    {
+        Log::info('Aggregation already in progress for station', [
+            'station_id' => $this->pollingStationId,
+            'timestamp' => now()->format('Y-m-d H:i:s.u'),
+        ]);
+
+        try {
+            $this->release(3);
+        } catch (\Throwable $e) {
+            self::dispatch($this->pollingStationId)
+                ->delay(now()->addSeconds(3))
+                ->onQueue('aggregation');
+        }
+    }
+
+    protected function performAggregation(): void
+    {
+        Log::info('Starting aggregation for station', [
+            'station_id' => $this->pollingStationId,
+            'timestamp' => now()->format('Y-m-d H:i:s.u'),
+        ]);
+
+        // Compute aggregates outside transaction
+        $listCounts = $this->getListCounts();
+        $candidateCounts = $this->getCandidateCounts();
+        $summaryCounts = $this->getSummaryCounts();
+
+        // Short transaction for writes only
+        DB::transaction(function () use ($listCounts, $candidateCounts, $summaryCounts) {
+            $this->persistAggregates($listCounts, $candidateCounts);
+            $this->updateStationSummary($summaryCounts);
+        });
+
+        // Update cache and broadcast after commit
+        $this->updateCache();
+        $this->broadcastUpdate();
+
+        Log::info('Aggregation completed successfully for station', [
+            'station_id' => $this->pollingStationId,
+            'timestamp' => now()->format('Y-m-d H:i:s.u'),
+        ]);
+    }
+
+    protected function handleAggregationFailure(\Exception $e): void
+    {
+        Log::error('Failed to aggregate station results', [
+            'station_id' => $this->pollingStationId,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'timestamp' => now()->format('Y-m-d H:i:s.u'),
+        ]);
+    }
+
+    protected function releaseLock($lock): void
+    {
+        try {
+            $lock->release();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to release aggregation lock', [
+                'station_id' => $this->pollingStationId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    protected function broadcastUpdate(): void
+    {
+        Log::info('Broadcasting results update for station', [
+            'station_id' => $this->pollingStationId,
+            'timestamp' => now()->format('Y-m-d H:i:s.u'),
+        ]);
+
+        broadcast(new StationResultsUpdated($this->pollingStationId));
     }
 
     public function failed(\Throwable $exception): void
@@ -120,107 +149,49 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
         ]);
     }
 
-    protected function aggregateListVotes(): void
-    {
-        // Backward compatible stub: prefer getListCounts() + persistAggregates()
-        $listCounts = $this->getListCounts();
-        $this->persistAggregates($listCounts, collect());
-    }
-
-    protected function aggregateCandidateVotes(): void
-    {
-        // Backward compatible stub: prefer getCandidateCounts() + persistAggregates()
-        $candidateCounts = $this->getCandidateCounts();
-        $this->persistAggregates(collect(), $candidateCounts);
-    }
-
-    /**
-     * Return aggregated list vote counts (read-only, not persisted).
-     */
-    /**
-     * Return a collection of aggregated list vote counts.
-     * Each item is an object with `list_id` and `vote_count` properties.
-     *
-     * @return \Illuminate\Support\Collection<int, \App\ValueObjects\ListVoteCount>
-     */
     protected function getListCounts(): \Illuminate\Support\Collection
     {
-        // Use a raw query via the query builder so we return a Support\Collection of stdClass
-        // rows which we then map into plain objects matching the annotated shape.
-        $rows = DB::table('ballot_entries')
+        return DB::table('ballot_entries')
             ->where('polling_station_id', $this->pollingStationId)
             ->whereIn('ballot_type', ['valid_list', 'valid_preferential'])
             ->whereNotNull('list_id')
             ->groupBy('list_id')
             ->select('list_id', DB::raw('count(*) as vote_count'))
             ->get()
-            ->map(function ($r) {
-                return new \App\ValueObjects\ListVoteCount(
-                    $r->list_id !== null ? (int) $r->list_id : null,
-                    (int) $r->vote_count
-                );
-            });
-
-        return $rows;
+            ->map(fn ($r) => new \App\ValueObjects\ListVoteCount(
+                $r->list_id !== null ? (int) $r->list_id : null,
+                (int) $r->vote_count
+            ));
     }
 
-    /**
-     * Return aggregated candidate vote counts (read-only, not persisted).
-     */
-    /**
-     * Return a collection of aggregated candidate vote counts.
-     * Each item is an object with `candidate_id` and `vote_count` properties.
-     *
-     * @return \Illuminate\Support\Collection<int, \App\ValueObjects\CandidateVoteCount>
-     */
     protected function getCandidateCounts(): \Illuminate\Support\Collection
     {
-        $rows = DB::table('ballot_entries')
+        return DB::table('ballot_entries')
             ->where('polling_station_id', $this->pollingStationId)
             ->where('ballot_type', 'valid_preferential')
             ->whereNotNull('candidate_id')
             ->groupBy('candidate_id')
             ->select('candidate_id', DB::raw('count(*) as vote_count'))
             ->get()
-            ->map(function ($r) {
-                return new \App\ValueObjects\CandidateVoteCount(
-                    $r->candidate_id !== null ? (int) $r->candidate_id : null,
-                    (int) $r->vote_count
-                );
-            });
-
-        return $rows;
+            ->map(fn ($r) => new \App\ValueObjects\CandidateVoteCount(
+                $r->candidate_id !== null ? (int) $r->candidate_id : null,
+                (int) $r->vote_count
+            ));
     }
 
-    /**
-     * Return aggregated summary row containing computed fields.
-     *
-     * Returned object shape:
-     * object{
-     *   total: int|null,
-     *   valid_list: int|null,
-     *   valid_preferential: int|null,
-     *   white: int|null,
-     *   cancelled: int|null,
-     *   first_entry: string|null,
-     *   last_entry: string|null,
-     * }
-     *
-     * @return object{total:int|null, valid_list:int|null, valid_preferential:int|null, white:int|null, cancelled:int|null, first_entry:string|null, last_entry:string|null}|null
-     */
     protected function getSummaryCounts(): ?object
     {
         $row = DB::table('ballot_entries')
             ->where('polling_station_id', $this->pollingStationId)
-            ->selectRaw(
-                "count(*) as total,
+            ->selectRaw("
+                count(*) as total,
                 sum(case when ballot_type = 'valid_list' then 1 else 0 end) as valid_list,
                 sum(case when ballot_type = 'valid_preferential' then 1 else 0 end) as valid_preferential,
                 sum(case when ballot_type = 'white' then 1 else 0 end) as white,
                 sum(case when ballot_type = 'cancelled' then 1 else 0 end) as cancelled,
                 min(entered_at) as first_entry,
-                max(entered_at) as last_entry"
-            )
+                max(entered_at) as last_entry
+            ")
             ->first();
 
         if ($row === null) {
@@ -238,18 +209,10 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
         ];
     }
 
-    /**
-     * Persist aggregates for lists and candidates. Keep writes short to minimize transaction time.
-     * Both parameters are Eloquent collections produced by the get*Counts() helpers.
-     */
-    /**
-     * @param  \Illuminate\Support\Collection<int, mixed>  $listCounts
-     * @param  \Illuminate\Support\Collection<int, mixed>  $candidateCounts
-     */
     protected function persistAggregates(\Illuminate\Support\Collection $listCounts, \Illuminate\Support\Collection $candidateCounts): void
     {
-        // Build two arrays of rows (lists and candidates) and perform a single upsert per station.
         $rows = [];
+        $now = now();
 
         foreach ($listCounts as $count) {
             $rows[] = [
@@ -257,7 +220,7 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
                 'list_id' => $count->list_id,
                 'candidate_id' => null,
                 'vote_count' => $count->vote_count,
-                'last_updated_at' => now(),
+                'last_updated_at' => $now,
             ];
         }
 
@@ -267,12 +230,11 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
                 'list_id' => null,
                 'candidate_id' => $count->candidate_id,
                 'vote_count' => $count->vote_count,
-                'last_updated_at' => now(),
+                'last_updated_at' => $now,
             ];
         }
 
         if (! empty($rows)) {
-            // Use a single upsert statement to reduce roundtrips and keep the transaction short.
             DB::table('station_aggregates')->upsert(
                 $rows,
                 ['polling_station_id', 'list_id', 'candidate_id'],
@@ -281,33 +243,20 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    /**
-     * Persist station summary using the pre-computed counts object.
-     */
-    /**
-     * @param  object{total:int|null, valid_list:int|null, valid_preferential:int|null, white:int|null, cancelled:int|null, first_entry:string|null, last_entry:string|null}|null  $counts
-     */
     protected function updateStationSummary(?object $counts = null): void
     {
         if (is_null($counts)) {
             $counts = $this->getSummaryCounts();
         }
 
-        // Coerce aggregated NULLs to sensible defaults (0 for counts)
-        $total = $counts->total ?? 0;
-        $validList = $counts->valid_list ?? 0;
-        $validPref = $counts->valid_preferential ?? 0;
-        $white = $counts->white ?? 0;
-        $cancelled = $counts->cancelled ?? 0;
-
         StationSummary::updateOrCreate(
             ['polling_station_id' => $this->pollingStationId],
             [
-                'total_ballots_entered' => $total,
-                'valid_list_votes' => $validList,
-                'valid_preferential_votes' => $validPref,
-                'white_papers' => $white,
-                'cancelled_papers' => $cancelled,
+                'total_ballots_entered' => $counts->total ?? 0,
+                'valid_list_votes' => $counts->valid_list ?? 0,
+                'valid_preferential_votes' => $counts->valid_preferential ?? 0,
+                'white_papers' => $counts->white ?? 0,
+                'cancelled_papers' => $counts->cancelled ?? 0,
                 'first_entry_at' => $counts->first_entry,
                 'last_entry_at' => $counts->last_entry,
             ]
@@ -320,24 +269,20 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
             ->with(['list:id,name', 'candidate:id,full_name'])
             ->orderByDesc('vote_count')
             ->get()
-            ->map(function ($agg) {
-                return [
-                    'list_id' => $agg->list_id,
-                    'candidate_id' => $agg->candidate_id,
-                    'vote_count' => $agg->vote_count,
-                    'list' => $agg->list ? ['name' => $agg->list->name] : null,
-                    'candidate' => $agg->candidate ? ['full_name' => $agg->candidate->full_name] : null,
-                ];
-            })
+            ->map(fn ($agg) => [
+                'list_id' => $agg->list_id,
+                'candidate_id' => $agg->candidate_id,
+                'vote_count' => $agg->vote_count,
+                'list' => $agg->list ? ['name' => $agg->list->name] : null,
+                'candidate' => $agg->candidate ? ['full_name' => $agg->candidate->full_name] : null,
+            ])
             ->toArray();
 
         $summary = StationSummary::where('polling_station_id', $this->pollingStationId)->first();
 
-        Cache::put(
-            "station:{$this->pollingStationId}:aggregates",
-            $aggregates,
-            now()->addMinutes(5)
-        );
+        $cacheTtl = now()->addMinutes(self::CACHE_TTL_MINUTES);
+
+        Cache::put("station:{$this->pollingStationId}:aggregates", $aggregates, $cacheTtl);
 
         Cache::put(
             "station:{$this->pollingStationId}:summary",
@@ -348,13 +293,10 @@ class AggregateStationResults implements ShouldBeUnique, ShouldQueue
                 'white_papers' => $summary->white_papers,
                 'cancelled_papers' => $summary->cancelled_papers,
             ] : null,
-            now()->addMinutes(5)
+            $cacheTtl
         );
     }
 
-    /**
-     * @return string[]
-     */
     public function tags(): array
     {
         return ['aggregation', 'station:'.$this->pollingStationId];

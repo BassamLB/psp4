@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\BallotController;
 use App\Http\Controllers\Api\StationResultsController;
 use App\Http\Controllers\BallotEntryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataEditorController;
 use Illuminate\Broadcasting\BroadcastController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -54,6 +55,14 @@ Route::middleware(['auth', 'verified', 'user.allowed'])->group(function () {
     // Ballot Entry
     Route::get('ballots/entry/{station}', [BallotEntryController::class, 'show'])->name('ballots.entry');
     Route::get('ballots/entry-grid/{station}', [BallotEntryController::class, 'showGrid'])->name('ballots.entry.grid');
+
+    // Data Editor routes (for users with isDataEditor role)
+    Route::middleware('data-editor')->prefix('data-editor')->name('data-editor.')->group(function () {
+        Route::get('/', [DataEditorController::class, 'index'])->name('dashboard');
+        Route::put('voters/{voter}', [DataEditorController::class, 'update'])->name('voters.update');
+        Route::patch('voters/{voter}/move-family', [DataEditorController::class, 'moveToFamily'])->name('voters.move-family');
+        Route::get('families', [DataEditorController::class, 'getFamilies'])->name('families.index');
+    });
 
     // Admin routes
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
