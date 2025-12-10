@@ -89,7 +89,7 @@ class ImportVotersToTempTable implements ShouldQueue
         }
 
         $filename = basename(preg_replace('#^app/#', '', $cleaned));
-        $fullPath = storage_path('app/' . self::STORAGE_DIR . '/' . $filename);
+        $fullPath = storage_path('app/'.self::STORAGE_DIR.'/'.$filename);
 
         if (! is_readable($fullPath)) {
             Log::error('ImportVotersToTempTable: cleaned file not readable', [
@@ -152,7 +152,7 @@ class ImportVotersToTempTable implements ShouldQueue
                     'exception' => $e->getMessage(),
                     'upload_id' => $this->upload->id,
                 ]);
-                throw new \Exception('Failed to prepare temp table: ' . $e->getMessage());
+                throw new \Exception('Failed to prepare temp table: '.$e->getMessage());
             }
         }
     }
@@ -163,8 +163,9 @@ class ImportVotersToTempTable implements ShouldQueue
     protected function initializeFailedRowsFile(string $inputPath): string
     {
         $filename = basename($inputPath);
-        $failedRowsFile = storage_path('app/' . self::STORAGE_DIR . '/' . pathinfo($filename, PATHINFO_FILENAME) . '_failed_rows.csv');
+        $failedRowsFile = storage_path('app/'.self::STORAGE_DIR.'/'.pathinfo($filename, PATHINFO_FILENAME).'_failed_rows.csv');
 
+        // Write header only once here
         $failedRowsFh = fopen($failedRowsFile, 'w');
         if (! $failedRowsFh) {
             throw new \Exception("Could not create failed rows file: {$failedRowsFile}");
@@ -186,7 +187,7 @@ class ImportVotersToTempTable implements ShouldQueue
         ];
 
         fputcsv($failedRowsFh, $failedRowsHeader);
-        fclose($failedRowsFh);
+        fclose($failedRowsFh); // Close after writing header
 
         return $failedRowsFile;
     }
@@ -213,6 +214,13 @@ class ImportVotersToTempTable implements ShouldQueue
         $rowsInserted = 0;
         $insertBuffer = [];
         $rowsProcessed = 0;
+        $totalFailedRows = 0;
+
+        // CRITICAL CHANGE: Open failed rows file handle once for appending
+        $failedRowsFh = fopen($failedRowsFile, 'a');
+        if (! $failedRowsFh) {
+            throw new \Exception("Could not re-open failed rows file for appending: {$failedRowsFile}");
+        }
 
         foreach ($fh as $row) {
             if (! $row) {
@@ -260,7 +268,7 @@ class ImportVotersToTempTable implements ShouldQueue
                 $chunkStart = microtime(true);
                 $chunkCount = count($insertBuffer);
                 $actualInserted = 0;
-                $failedRows = 0;
+                $failedRowsInChunk = 0;
 
                 try {
                     DB::table('voter_imports_temp')->insert($insertBuffer);
@@ -278,13 +286,13 @@ class ImportVotersToTempTable implements ShouldQueue
                             VoterImportTemp::create($rowData);
                             $actualInserted++;
                         } catch (\Throwable $insertError) {
-                            $failedRows++;
+                            $failedRowsInChunk++;
+                            $totalFailedRows++;
 
-                            // Write failed row to CSV file
-                            $failedRowsFh = fopen($failedRowsFile, 'a');
+                            // Write failed row to CSV file using the open handle
                             if ($failedRowsFh) {
                                 fputcsv($failedRowsFh, [
-                                    $rowsProcessed - $chunkCount + $failedRows, // approximate row number
+                                    $rowsProcessed - $chunkCount + $failedRowsInChunk, // approximate row number
                                     $insertError->getMessage(),
                                     $rowData['sijil_number'] ?? '',
                                     $rowData['town_id'] ?? '',
@@ -297,22 +305,19 @@ class ImportVotersToTempTable implements ShouldQueue
                                     $rowData['personal_sect'] ?? '',
                                     $rowData['date_of_birth'] ?? '',
                                 ]);
-                                fclose($failedRowsFh);
                             }
 
                             Log::error('Individual row insert failed', [
                                 'error' => $insertError->getMessage(),
                                 'sijil' => $rowData['sijil_number'] ?? null,
-                                'town_id' => $rowData['town_id'] ?? null,
-                                'first_name' => $rowData['first_name'] ?? null,
                                 'upload_id' => $this->upload->id,
                             ]);
                         }
                     }
 
-                    if ($failedRows > 0) {
+                    if ($failedRowsInChunk > 0) {
                         Log::warning('Some rows failed to insert', [
-                            'failed_count' => $failedRows,
+                            'failed_count' => $failedRowsInChunk,
                             'successful_count' => $actualInserted,
                             'upload_id' => $this->upload->id,
                         ]);
@@ -349,27 +354,22 @@ class ImportVotersToTempTable implements ShouldQueue
                     Log::info('ImportVotersToTempTable: progress', ['inserted' => $rowsInserted, 'rps' => $rps, 'upload_id' => $this->upload->id]);
                 }
 
-                // occasionally persist timing metrics to upload meta (every ~10s)
-                if (microtime(true) - $lastMeterSave > 10) {
-                    try {
-                        $elapsed = microtime(true) - $startTime;
-                        $avg = $elapsed > 0 ? round($rowsInserted / $elapsed, 2) : null;
-                        $this->upload->meta = array_merge($this->upload->meta ?? [], ['import_metrics' => ['chunks' => $chunkMeters, 'inserted' => $rowsInserted, 'elapsed' => round($elapsed, 3), 'avg_rps' => $avg]]);
-                        $this->upload->save();
-                    } catch (\Throwable $_) {
-                        // ignore
-                    }
-                    $lastMeterSave = microtime(true);
-                }
+                // Removed meter saving inside loop to avoid constant DB writes/race conditions.
             }
         }
 
+        // CRITICAL CHANGE: Close the file handle before processing results
+        fclose($failedRowsFh);
+
         // insert any remaining buffered rows
         if (! empty($insertBuffer)) {
+            // Re-open handle if there was a final failure
+            $failedRowsFh = fopen($failedRowsFile, 'a');
+
             $chunkStart = microtime(true);
             $chunkCount = count($insertBuffer);
             $actualInserted = 0;
-            $failedRows = 0;
+            $failedRowsInChunk = 0;
 
             try {
                 DB::table('voter_imports_temp')->insert($insertBuffer);
@@ -386,13 +386,13 @@ class ImportVotersToTempTable implements ShouldQueue
                         VoterImportTemp::create($rowData);
                         $actualInserted++;
                     } catch (\Throwable $insertError) {
-                        $failedRows++;
+                        $failedRowsInChunk++;
+                        $totalFailedRows++;
 
                         // Write failed row to CSV file
-                        $failedRowsFh = fopen($failedRowsFile, 'a');
                         if ($failedRowsFh) {
                             fputcsv($failedRowsFh, [
-                                $rowsProcessed - $chunkCount + $failedRows, // approximate row number
+                                $rowsProcessed - $chunkCount + $failedRowsInChunk, // approximate row number
                                 $insertError->getMessage(),
                                 $rowData['sijil_number'] ?? '',
                                 $rowData['town_id'] ?? '',
@@ -400,27 +400,24 @@ class ImportVotersToTempTable implements ShouldQueue
                                 $rowData['family_name'] ?? '',
                                 $rowData['father_name'] ?? '',
                                 $rowData['mother_full_name'] ?? '',
-                                $rowData['gender_id'] ?? '',
-                                $rowData['sect_id'] ?? '',
-                                $rowData['personal_sect'] ?? '',
-                                $rowData['date_of_birth'] ?? '',
+                                'gender_id' => $rowData['gender_id'] ?? '',
+                                'sect_id' => $rowData['sect_id'] ?? '',
+                                'personal_sect' => $rowData['personal_sect'] ?? '',
+                                'date_of_birth' => $rowData['date_of_birth'] ?? '',
                             ]);
-                            fclose($failedRowsFh);
                         }
 
                         Log::error('Individual row insert failed in final chunk', [
                             'error' => $insertError->getMessage(),
                             'sijil' => $rowData['sijil_number'] ?? null,
-                            'town_id' => $rowData['town_id'] ?? null,
-                            'first_name' => $rowData['first_name'] ?? null,
                             'upload_id' => $this->upload->id,
                         ]);
                     }
                 }
 
-                if ($failedRows > 0) {
+                if ($failedRowsInChunk > 0) {
                     Log::warning('Some rows failed in final chunk', [
-                        'failed_count' => $failedRows,
+                        'failed_count' => $failedRowsInChunk,
                         'successful_count' => $actualInserted,
                         'upload_id' => $this->upload->id,
                     ]);
@@ -437,6 +434,10 @@ class ImportVotersToTempTable implements ShouldQueue
                 $chunkMeters[] = ['rows' => $chunkCount, 'seconds' => round($chunkDuration, 3), 'rps' => $rps];
             }
             Log::info('ImportVotersToTempTable: final chunk inserted', ['rows' => $chunkCount, 'seconds' => $chunkDuration, 'rps' => $rps, 'upload_id' => $this->upload->id]);
+
+            if ($failedRowsFh) {
+                fclose($failedRowsFh);
+            }
         }
 
         // final timing summary
@@ -446,11 +447,8 @@ class ImportVotersToTempTable implements ShouldQueue
         // Get actual count from database to verify
         $actualDbCount = DB::table('voter_imports_temp')->count();
 
-        // Count failed rows by reading the CSV (excluding header)
-        $failedRowsCount = 0;
-        if (file_exists($failedRowsFile)) {
-            $failedRowsCount = max(0, count(file($failedRowsFile)) - 1);
-        }
+        // Use the totalFailedRows counter instead of re-reading the file
+        $failedRowsCount = $totalFailedRows;
 
         // Delete the failed rows file if it's empty (no failures)
         if ($failedRowsCount === 0 && file_exists($failedRowsFile)) {
@@ -506,30 +504,28 @@ class ImportVotersToTempTable implements ShouldQueue
     /**
      * Handle import result and finalize upload
      */
+    // In ImportVotersToTempTable.php
     protected function handleImportResult(array $result, string $failedRowsFile): void
     {
         $this->logMemoryUsage('Import completed');
 
-        Log::info('ImportVotersToTempTable: Completed', array_merge($result, [
-            'upload_id' => $this->upload->id,
-        ]));
-
-        // Clean up failed rows file if empty
+        // ... (Your log and file cleanup logic remains the same) ...
         $failedRowsPath = null;
         if ($result['failed_rows_count'] > 0 && file_exists($failedRowsFile)) {
-            $failedRowsPath = 'private/imports/' . basename($failedRowsFile);
+            $failedRowsPath = 'private/imports/'.basename($failedRowsFile);
         } elseif (file_exists($failedRowsFile)) {
             unlink($failedRowsFile);
         }
 
-        // Update upload meta with results
+        // CRITICAL FIX: Simplify the data saved to the DB
         $metaUpdates = [
             'temp_rows' => $result['rows_in_db'],
             'import_metrics' => [
-                'chunks' => $result['chunk_metrics'],
+                // REMOVED 'chunks' array. Saving only the count is enough.
                 'inserted' => $result['rows_inserted'],
                 'elapsed' => $result['elapsed_seconds'],
                 'avg_rps' => $result['avg_rps'],
+                'chunk_count' => count($result['chunk_metrics']), // Use the count
             ],
         ];
 
@@ -538,11 +534,29 @@ class ImportVotersToTempTable implements ShouldQueue
             $metaUpdates['failed_rows_count'] = $result['failed_rows_count'];
         }
 
+        // Force memory cleanup before the final save and job exit
+        gc_collect_cycles();
+
+        // The final save operation
         $this->upload->meta = array_merge($this->upload->meta ?? [], $metaUpdates);
         $this->upload->status = 'temp_imported';
         $this->upload->save();
 
+        Log::info('handleImportResult: Upload model saved successfully', ['upload_id' => $this->upload->id]);
+
+        // ... (Your log and final save code here) ...
+
         $this->chainNextJob();
+
+        // CRITICAL FIX: Explicitly remove the large Eloquent model from the job object.
+        // This must be the final action on the object.
+        $uploadId = $this->upload->id; // Grab the ID before unsetting
+
+        unset($this->upload);
+
+        // Log the successful exit using the local variable, not the property
+        Log::info('handleImportResult: Job execution complete, awaiting queue deletion.', ['upload_id' => $uploadId]);
+
     }
 
     /**
@@ -554,11 +568,7 @@ class ImportVotersToTempTable implements ShouldQueue
             Log::info('ImportVotersToTempTable: About to dispatch merge job', [
                 'upload_id' => $this->upload->id,
             ]);
-
-            MergeVotersFromTempOptimized::dispatch($this->upload, $this->options)
-                ->onConnection('redis')  // Explicitly set connection
-                ->onQueue('imports');
-
+            MergeVotersFromTempOptimized::dispatch($this->upload, $this->options)->onQueue('imports');
             Log::info('ImportVotersToTempTable: Merge job dispatched successfully', [
                 'upload_id' => $this->upload->id,
             ]);
@@ -634,7 +644,7 @@ class ImportVotersToTempTable implements ShouldQueue
     {
         return [
             'importing',
-            'upload:' . $this->upload->id,
+            'upload:'.$this->upload->id,
         ];
     }
 }

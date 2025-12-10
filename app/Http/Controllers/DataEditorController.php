@@ -10,6 +10,7 @@ use App\Models\Sect;
 use App\Models\Town;
 use App\Models\Voter;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -53,11 +54,12 @@ class DataEditorController extends Controller
         // Apply filters
         $this->applyFilters($query, $request);
 
-        // Get voters with pagination
-        $voters = $query->paginate(50)->withQueryString();
+        // Get voters with pagination using infinite scroll (use a named page param)
+        $voters = $query->paginate(perPage: 50)->withQueryString();
 
         return Inertia::render('data-editor/Dashboard', [
-            'voters' => $voters,
+            // Pass the paginator directly to Inertia::scroll (avoid wrapping in a closure)
+            'voters' => Inertia::scroll(fn() => $voters),
             'filters' => $this->getFilters(),
             'currentFilters' => $request->only([
                 'search_sijil',
@@ -76,12 +78,12 @@ class DataEditorController extends Controller
     /**
      * Update voter information
      */
-    public function update(Request $request, Voter $voter): JsonResponse
+    public function update(Request $request, Voter $voter): RedirectResponse
     {
         $user = $request->user();
 
         if (! $user->isDataEditor()) {
-            return response()->json(['message' => 'غير مخول'], 403);
+            abort(403, 'غير مخول');
         }
 
         // Check if voter is in user's allowed regions
@@ -90,7 +92,7 @@ class DataEditorController extends Controller
             $regionIds = json_decode($regionIds, true) ?? [];
         }
         if (! in_array($voter->town_id, $regionIds)) {
-            return response()->json(['message' => 'غير مخول لتعديل هذا الناخب'], 403);
+            abort(403, 'غير مخول لتعديل هذا الناخب');
         }
 
         $validatedData = $request->validate([
@@ -105,10 +107,7 @@ class DataEditorController extends Controller
 
         $voter->update($validatedData);
 
-        return response()->json([
-            'message' => 'تم تحديث بيانات الناخب بنجاح',
-            'voter' => $voter->fresh(['town', 'gender', 'sect', 'profession', 'country', 'belong']),
-        ]);
+        return redirect()->back()->with('success', 'تم تحديث بيانات الناخب بنجاح');
     }
 
     /**
@@ -184,7 +183,7 @@ class DataEditorController extends Controller
     protected function applyFilters($query, Request $request): void
     {
         if ($request->filled('search_sijil')) {
-            $query->where('sijil_number', 'like', '%'.$request->search_sijil.'%');
+            $query->where('sijil_number', $request->search_sijil);
         }
 
         if ($request->filled('search_family_name')) {

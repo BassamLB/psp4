@@ -23,6 +23,9 @@ class MergeVotersFromTempOptimized implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
+    // Set a sensible chunk size for deletes to prevent excessive locks/memory
+    private const DELETE_CHUNK_SIZE = 10000;
+
     public function __construct(public VoterUpload $upload, public array $options = [])
     {
         $this->onQueue('imports');
@@ -36,183 +39,224 @@ class MergeVotersFromTempOptimized implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
-        $meta = $this->upload->meta ?? [];
-        $tempCount = VoterImportTemp::count();
+        Log::info('MergeVotersFromTempOptimized: Job started', ['upload_id' => $this->upload->id]);
+        try {
+            /** @var array $meta */
+            $meta = $this->upload->meta ?? [];
+            $tempCount = VoterImportTemp::count();
 
-        if ($tempCount === 0) {
-            Log::info('MergeVotersFromTempOptimized: No temp rows found', ['upload_id' => $this->upload->id]);
-            $this->upload->status = 'completed';
-            $this->upload->meta = array_merge($meta, ['merge_skipped' => true]);
+            if ($tempCount === 0) {
+                Log::info('MergeVotersFromTempOptimized: No temp rows found', ['upload_id' => $this->upload->id]);
+                $this->upload->status = 'completed';
+                $this->upload->meta = array_merge($meta, ['merge_skipped' => true]);
+                $this->upload->save();
+
+                return;
+            }
+
+            $this->upload->status = 'merging';
             $this->upload->save();
 
-            return;
-        }
+            $dryRun = (bool) ($this->options['dry_run'] ?? false);
+            $startTime = microtime(true);
 
-        $this->upload->status = 'merging';
-        $this->upload->save();
+            // Detect district_id from the imported data by joining temp with towns
+            $districtIds = DB::table('voter_imports_temp')
+                ->join('towns', 'voter_imports_temp.town_id', '=', 'towns.id')
+                ->whereNotNull('towns.district_id')
+                ->distinct()
+                ->pluck('towns.district_id');
 
-        $dryRun = (bool) ($this->options['dry_run'] ?? false);
-        $startTime = microtime(true);
+            if ($districtIds->isEmpty()) {
+                Log::error('MergeVotersFromTempOptimized: No district_id found in temp data', ['upload_id' => $this->upload->id]);
+                $this->upload->status = 'error';
+                $this->upload->meta = array_merge($meta, ['merge_error' => 'no_district_found']);
+                $this->upload->save();
 
-        // Detect district_id from the imported data by joining temp with towns
-        $districtIds = DB::table('voter_imports_temp')
-            ->join('towns', 'voter_imports_temp.town_id', '=', 'towns.id')
-            ->whereNotNull('towns.district_id')
-            ->distinct()
-            ->pluck('towns.district_id');
+                return;
+            }
 
-        if ($districtIds->isEmpty()) {
-            Log::error('MergeVotersFromTempOptimized: No district_id found in temp data', ['upload_id' => $this->upload->id]);
-            $this->upload->status = 'error';
-            $this->upload->meta = array_merge($meta, ['merge_error' => 'no_district_found']);
-            $this->upload->save();
+            if ($districtIds->count() > 1) {
+                Log::warning('MergeVotersFromTempOptimized: Multiple districts in import', [
+                    'upload_id' => $this->upload->id,
+                    'districts' => $districtIds->toArray(),
+                ]);
+            }
 
-            return;
-        }
+            // Use the first district (or you could require single-district imports)
+            $districtId = $districtIds->first();
 
-        if ($districtIds->count() > 1) {
-            Log::warning('MergeVotersFromTempOptimized: Multiple districts in import', [
+            Log::info('MergeVotersFromTempOptimized: Starting', [
                 'upload_id' => $this->upload->id,
-                'districts' => $districtIds->toArray(),
+                'temp_rows' => $tempCount,
+                'district_id' => $districtId,
             ]);
-        }
 
-        // Use the first district (or you could require single-district imports)
-        $districtId = $districtIds->first();
+            $insertedCount = 0;
+            $updatedCount = 0;
+            $softDeletedCount = 0;
 
-        Log::info('MergeVotersFromTempOptimized: Starting', [
-            'upload_id' => $this->upload->id,
-            'temp_rows' => $tempCount,
-            'district_id' => $districtId,
-        ]);
+            if (! $dryRun) {
+                try {
+                    $districtTownIds = DB::table('towns')
+                        ->where('district_id', $districtId)
+                        ->pluck('id');
 
-        $insertedCount = 0;
-        $updatedCount = 0;
-        $softDeletedCount = 0;
+                    if ($districtTownIds->isEmpty()) {
+                        Log::warning('MergeVotersFromTempOptimized: No towns found for district', [
+                            'upload_id' => $this->upload->id,
+                            'district_id' => $districtId,
+                        ]);
 
-        if (! $dryRun) {
-            try {
-                DB::beginTransaction();
+                        return;
+                    }
 
-                // Use the generated `merge_hash` column for bulk operations.
-                // This performs a fast JOIN on the compact SHA1 hash to update
-                // existing rows and insert new ones in bulk.
-                $districtTownIds = DB::table('towns')
-                    ->where('district_id', $districtId)
-                    ->pluck('id');
+                    $idsList = implode(',', $districtTownIds->toArray());
+                    $now = now();
 
-                if ($districtTownIds->isEmpty()) {
-                    Log::warning('MergeVotersFromTempOptimized: No towns found for district', [
+                    $updatedCount = 0; // Insert-only mode
+
+                    Log::info('MergeVotersFromTempOptimized: Skipping updates - insert-only mode', [
                         'upload_id' => $this->upload->id,
-                        'district_id' => $districtId,
+                        'district_towns' => $districtTownIds->count(),
                     ]);
-                    DB::rollBack();
 
-                    return;
-                }
+                    // --- 1. BULK INSERT ---
+                    DB::beginTransaction();
 
-                $idsList = implode(',', $districtTownIds->toArray());
-                $now = now();
+                    Log::info('MergeVotersFromTempOptimized: Starting bulk insert', [
+                        'upload_id' => $this->upload->id,
+                    ]);
 
-                // Skip update operation - only insert new voters that don't exist
-                $updatedCount = 0;
-
-                Log::info('MergeVotersFromTempOptimized: Skipping updates - insert-only mode', [
-                    'upload_id' => $this->upload->id,
-                    'district_towns' => $districtTownIds->count(),
-                ]);
-
-                Log::info('MergeVotersFromTempOptimized: Starting bulk insert', [
-                    'upload_id' => $this->upload->id,
-                ]);
-
-                // Bulk insert new voters (temp rows without a matching hash)
-                // Remove unnecessary NULL checks since fields are never null
-                $insertSql = "INSERT INTO voters (sijil_number, town_id, first_name, family_name, father_name, mother_full_name, sijil_additional_string, gender_id, sect_id, personal_sect, date_of_birth, created_at, updated_at)
+                    $insertSql = "INSERT INTO voters (sijil_number, town_id, first_name, family_name, father_name, mother_full_name, sijil_additional_string, gender_id, sect_id, personal_sect, date_of_birth, created_at, updated_at)
                     SELECT t.sijil_number, t.town_id, t.first_name, t.family_name, t.father_name, t.mother_full_name, t.sijil_additional_string, t.gender_id, t.sect_id, t.personal_sect, t.date_of_birth, ?, ?
                     FROM voter_imports_temp t
                     LEFT JOIN voters v ON v.merge_hash = t.merge_hash
                     WHERE v.id IS NULL
                     AND t.town_id IN ($idsList)";
 
-                $insertedCount = DB::affectingStatement($insertSql, [$now, $now]);
+                    $insertedCount = DB::affectingStatement($insertSql, [$now, $now]);
 
-                Log::info('MergeVotersFromTempOptimized: Bulk insert completed', [
-                    'upload_id' => $this->upload->id,
-                    'inserted_count' => $insertedCount,
-                ]);
+                    DB::commit(); // Commit the insert to free up transaction resources early
 
-                Log::info('MergeVotersFromTempOptimized: Starting soft delete', [
-                    'upload_id' => $this->upload->id,
-                ]);
+                    Log::info('MergeVotersFromTempOptimized: Bulk insert completed', [
+                        'upload_id' => $this->upload->id,
+                        'inserted_count' => $insertedCount,
+                    ]);
 
-                // Soft delete voters in this district that are NOT in the temp table
-                // Use NOT EXISTS with merge_hash for optimal performance
-                $softDeleteSql = "UPDATE voters v
-                    SET v.deleted_at = ?
-                    WHERE v.town_id IN ($idsList)
-                    AND v.deleted_at IS NULL
-                    AND NOT EXISTS (
-                        SELECT 1 FROM voter_imports_temp t
-                        WHERE t.merge_hash = v.merge_hash
-                    )";
+                    // --- 2. CHUNKED SOFT DELETE ---
+                    Log::info('MergeVotersFromTempOptimized: Starting CHUNKED soft delete', [
+                        'upload_id' => $this->upload->id,
+                        'chunk_size' => self::DELETE_CHUNK_SIZE,
+                    ]);
 
-                $softDeletedCount = DB::update($softDeleteSql, [$now]);
+                    $deletedInChunk = 0;
+                    $offset = 0;
+                    $limit = self::DELETE_CHUNK_SIZE;
 
-                Log::info('MergeVotersFromTempOptimized: Soft delete completed', [
-                    'upload_id' => $this->upload->id,
-                    'district_id' => $districtId,
-                    'soft_deleted_count' => $softDeletedCount,
-                ]);
+                    do {
+                        // SQL to find IDs for soft deletion in the current chunk
+                        $selectIdsSql = "
+                        SELECT v.id FROM voters v
+                        WHERE v.town_id IN ({$idsList})
+                        AND v.deleted_at IS NULL
+                        AND NOT EXISTS (
+                            SELECT 1 FROM voter_imports_temp t
+                            WHERE t.merge_hash = v.merge_hash
+                        )
+                        LIMIT {$limit} OFFSET {$offset}";
 
-                DB::commit();
+                        // Use plain DB::select to fetch IDs
+                        $voterIds = DB::select($selectIdsSql);
+                        $idsToDelete = array_column($voterIds, 'id');
 
-                $elapsedSeconds = round(microtime(true) - $startTime, 2);
+                        if (empty($idsToDelete)) {
+                            break; // No more rows to delete
+                        }
 
-                Log::info('MergeVotersFromTempOptimized: Completed', [
-                    'upload_id' => $this->upload->id,
-                    'district_id' => $districtId,
-                    'inserted' => $insertedCount,
-                    'updated' => $updatedCount,
-                    'soft_deleted' => $softDeletedCount,
-                    'elapsed_seconds' => $elapsedSeconds,
-                ]);
-            } catch (\Throwable $e) {
-                DB::rollBack();
-                Log::error('MergeVotersFromTempOptimized: Failed', [
-                    'upload_id' => $this->upload->id,
-                    'exception' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                throw $e;
+                        // Perform the chunked update within a transaction to maintain integrity
+                        DB::beginTransaction();
+                        $deletedCount = DB::table('voters')
+                            ->whereIn('id', $idsToDelete)
+                            ->update(['deleted_at' => $now]);
+                        DB::commit();
+
+                        $deletedInChunk = count($idsToDelete);
+                        $softDeletedCount += $deletedCount;
+                        $offset += $limit;
+
+                        Log::info('MergeVotersFromTempOptimized: Soft delete progress', [
+                            'upload_id' => $this->upload->id,
+                            'total_deleted' => $softDeletedCount,
+                            'chunk_offset' => $offset,
+                        ]);
+                    } while ($deletedInChunk === $limit); // Continue if the chunk was full
+
+                    Log::info('MergeVotersFromTempOptimized: Soft delete completed', [
+                        'upload_id' => $this->upload->id,
+                        'district_id' => $districtId,
+                        'soft_deleted_count' => $softDeletedCount,
+                    ]);
+
+                    $elapsedSeconds = round(microtime(true) - $startTime, 2);
+
+                    Log::info('MergeVotersFromTempOptimized: Completed', [
+                        'upload_id' => $this->upload->id,
+                        'district_id' => $districtId,
+                        'inserted' => $insertedCount,
+                        'updated' => $updatedCount,
+                        'soft_deleted' => $softDeletedCount,
+                        'elapsed_seconds' => $elapsedSeconds,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Catch any remaining open transaction and roll it back
+                    if (DB::transactionLevel() > 0) {
+                        DB::rollBack();
+                    }
+
+                    Log::error('MergeVotersFromTempOptimized: Failed', [
+                        'upload_id' => $this->upload->id,
+                        'exception' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    throw $e;
+                }
             }
-        }
 
-        $report = [
-            'district_id' => $districtId ?? null,
-            'inserted_count' => $insertedCount,
-            'updated_count' => $updatedCount,
-            'soft_deleted_count' => $softDeletedCount,
-            'dry_run' => $dryRun,
-            'merge_seconds' => round(microtime(true) - $startTime, 2),
-            'completed_at' => now()->toDateTimeString(),
-        ];
+            $report = [
+                'district_id' => $districtId ?? null,
+                'inserted_count' => $insertedCount,
+                'updated_count' => $updatedCount,
+                'soft_deleted_count' => $softDeletedCount,
+                'dry_run' => $dryRun,
+                'merge_seconds' => round(microtime(true) - $startTime, 2),
+                'completed_at' => now()->toDateTimeString(),
+            ];
 
-        $this->upload->meta = array_merge($meta, ['import_report' => $report]);
-        $this->upload->status = 'imported';
-        $this->upload->save();
+            $this->upload->meta = array_merge($meta, ['import_report' => $report]);
+            $this->upload->status = 'imported';
+            $this->upload->save();
 
-        try {
-            event(new VoterUploadCleaned($this->upload));
-            event(new VoterUploadImported($this->upload));
+            try {
+                event(new VoterUploadCleaned($this->upload));
+                event(new VoterUploadImported($this->upload));
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
+            Log::info('MergeVotersFromTempOptimized: Report', ['upload_id' => $this->upload->id, 'report' => $report]);
+
+            Log::info('MergeVotersFromTempOptimized: Workflow completed', [
+                'upload_id' => $this->upload->id,
+            ]);
         } catch (\Throwable $e) {
-            // ignore
+            // This catch block is critical for catching initial setup failures
+            Log::error('MergeVotersFromTempOptimized: Initial setup failed', [
+                'upload_id' => $this->upload->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e; // Re-throw to allow job retries
         }
-
-        Log::info('MergeVotersFromTempOptimized: Report', ['upload_id' => $this->upload->id, 'report' => $report]);
-
-        Log::info('MergeVotersFromTempOptimized: Workflow completed', [
-            'upload_id' => $this->upload->id,
-        ]);
     }
 }
